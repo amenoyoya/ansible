@@ -46,6 +46,16 @@ Ansibleはローカルマシンにインストールする必要がある
 
 スタートメニューに「Ubuntu 18.04」が追加されるため、起動する
 
+```bash
+# 初回起動時は初期設定が必要
+Installing, this may take a few minutes...
+Please create a default UNIX user account. The username does not need to match your Windows username.
+For more information visit: https://aka.ms/wslusers
+Enter new UNIX username: # ログインユーザ名を設定
+Enter new UNIX password: # ログインパスワードを設定
+Retype new UNIX password: # パスワードをもう一度入力
+```
+
 以降は **Ansibleインストール on Ubuntu** の項を参照
 
 ### Ansibleインストール on Ubuntu
