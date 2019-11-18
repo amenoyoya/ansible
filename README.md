@@ -15,3 +15,11 @@
 ![conoha_vps.png](./img/conoha_vps.png)
 
 ![conoha_vps_512_app.png](./img/conoha_vps_512_app.png)
+
+
+## Ansibleによる構成管理
+
+参考: https://support.conoha.jp/v/ansible/
+
+Read [Ansible.md](./Ansible.md)
+ 
