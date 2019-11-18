@@ -25,7 +25,7 @@ Ansibleはローカルマシンにインストールする必要がある
 
 ここでは、Windows 10 環境と Ubuntu 18.04 環境におけるインストール方法を公開する
 
-### Ansibleインストール on Windows
+### Ansibleインストール on Windows 10
 ここでは、Windows Subsystem Linux（WSL）を使うことにする
 
 `Win + X` |> `A` => 管理者権限でPowerShell起動
@@ -56,6 +56,18 @@ Enter new UNIX password: # ログインパスワードを設定
 Retype new UNIX password: # パスワードをもう一度入力
 ```
 
-以降は **Ansibleインストール on Ubuntu** の項を参照
+以降は **Ansibleインストール on Ubuntu 18.04** の項を参照
 
-### Ansibleインストール on Ubuntu
+### Ansibleインストール on Ubuntu 18.04
+```bash
+# Ansibleインストール用のリポジトリ追加
+$ sudo apt update && apt install software-properties-common
+$ sudo apt-add-repository --yes --update ppa:ansible/ansible
+
+# Ansibleインストール
+$ sudo apt install ansible
+
+# バージョン確認
+$ ansible --version
+ansible 2.9.1
+```
