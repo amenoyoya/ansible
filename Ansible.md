@@ -16,3 +16,36 @@
 
 - インストールするパッケージのバージョンを指定する
 - スクリプトが実行された環境の情報を取得し、差分を処理する
+
+***
+
+## Ansibleインストール
+
+Ansibleはローカルマシンにインストールする必要がある
+
+ここでは、Windows 10 環境と Ubuntu 18.04 環境におけるインストール方法を公開する
+
+### Ansibleインストール on Windows
+ここでは、Windows Subsystem Linux（WSL）を使うことにする
+
+`Win + X` |> `A` => 管理者権限でPowerShell起動
+
+```powershell
+# Windows Subsystem Linux を有効化する
+> Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
+この操作を完了するために、今すぐコンピューターを再起動しますか?
+[Y] Yes  [N] No  [?] ヘルプ (既定値は "Y"): # そのままENTERして再起動
+
+# 再起動したら Ubuntu 18.04 ディストロパッケージをダウンロード
+## 「ダウンロード」ディレクトリに ubuntu1804.appx というファイル名でダウンロード
+> Invoke-WebRequest -Uri https://aka.ms/wsl-ubuntu-1804 -OutFile ~\Downloads\ubuntu1804.appx -UseBasicParsing
+
+# ダウンロードしたディストロパッケージをWSLに追加
+> Add-AppxPackage ~\Downloads\ubuntu1804.appx
+```
+
+スタートメニューに「Ubuntu 18.04」が追加されるため、起動する
+
+以降は **Ansibleインストール on Ubuntu** の項を参照
+
+### Ansibleインストール on Ubuntu
