@@ -1,0 +1,9 @@
+all:
+  hosts: # ホスト定義
+    conoha-vps: # conoha-vps host
+      ansible_host: XXX.XX.XX.XX # 指定サーバのIPアドレス
+  vars:  # 変数定義（接続設定）
+    ansible_ssh_port: 22 # SSH接続ポートは通常 22番
+    ansible_ssh_user: root # SSH接続ユーザ名
+    ansible_ssh_pass: password # SSH接続パスワード
+    ansible_sudo_pass: password # rootユーザパスワード

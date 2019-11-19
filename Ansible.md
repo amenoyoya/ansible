@@ -71,3 +71,57 @@ $ sudo apt install ansible
 $ ansible --version
 ansible 2.9.1
 ```
+
+***
+
+## Ansibleを使ってみる
+
+### インベントリファイルの作成
+Ansibleの接続先サーバ情報等を記述した設定ファイルを**インベントリファイル**と呼ぶ
+
+インベントリファイル名は任意だが、ここでは `servers.yml` というファイル名にする
+
+なお、インベントリファイルの形式としては**ini形式**と**yaml形式**があるが、ここではyaml形式を採用する
+
+`servers.yml` にサーバ情報を以下の通り記述する（yaml形式ではインデントにも意味があるため、インデント幅に注意すること）
+
+```yaml
+all:
+  hosts: # ホスト定義
+    conoha-vps: # conoha-vps host
+      ansible_host: XXX.XX.XX.XX # 指定サーバのIPアドレス
+  vars:  # 変数定義（接続設定）
+    ansible_ssh_port: 22 # SSH接続ポートは通常 22番
+    ansible_ssh_user: root # SSH接続ユーザ名
+    ansible_ssh_pass: password # SSH接続パスワード
+    ansible_sudo_pass: password # rootユーザパスワード
+```
+
+意味としては以下のようになる
+
+- hosts設定:
+    - サーバIPアドレス `XXX.XX.XX.XX` を `conoha-vps` というエイリアス名に設定
+        - ※ `XXX.XX.XX.XX` は接続先サーバの IPv4 アドレスを指定すること
+- vars設定: ここではSSH接続情報を記述
+    - ansible_ssh_port: SSH接続ポート｜基本的に`22`を指定
+    - ansible_ssh_user: SSH接続ユーザ｜ここでは`root`を設定
+    - ansible_ssh_pass: SSH接続パスワード
+    - ansible_sudo_pass: rootユーザパスワード｜rootユーザでSSH接続する場合は ansible_ssh_pass と同一になる
+
+### 単一コマンドの実行
+インベントリファイルを作成したら、Ansibleでサーバ内のコマンドを実行させてみる
+
+`servers.yml` があるディレクトリ内で以下のコマンドを実行
+
+```bash
+# Ansibleでサーバ内に接続し hostname コマンドを実行
+## ansible <エイリアス名>: エイリアス名に設定されたサーバに接続する
+## -i <インベントリファイル>: インベントリファイルを指定
+## -m <モジュール名>: Ansibleの実行モジュールを指定（ここでは command を指定）
+## -a <引数>: Ansible実行モジュールの引数を指定
+### => 今回は command モジュールのため hostname コマンドを実行するという意味になる
+$ ansible conoha-vps -i servers.yml -m command -a "hostname" 
+
+## => XXX-XX-XX-XX
+### サーバのIPアドレスが返ってきたら成功
+```
