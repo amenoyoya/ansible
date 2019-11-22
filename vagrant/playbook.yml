@@ -1,0 +1,24 @@
+- hosts: all
+  become: true # sudo権限で実行
+  tasks: # 各タスク定義｜nameは任意項目だが、分かりやすい名前をつけておくと管理しやすい
+    - name: add a new user
+      # Linuxユーザの作成
+      ## userモジュール｜name=<ユーザ名> state=<present|absent> uid=<ユーザID>
+      ### present: 存在する状態（存在しない場合は作成）, absent: 存在しない状態（存在する場合は削除）
+      ### uidは指定しなくとも良いが、複数サーバでユーザIDを統一するためには指定しておく必要がある
+      user: name=testuser state=present uid=1001
+
+    - name: mkdir .ssh
+      # .sshフォルダの作成
+      ## fileモジュール｜path=<ファイルパス> state=<file|directory|...> owner=<所有者> group=<所有グループ> mode=<パーミッション>
+      file: path=/home/testuser/.ssh/ state=directory owner=testuser group=testuser mode=700
+
+    - name: add authorized keys
+      # .ssh/ 配下に authorized_keys ファイルの作成
+      ## fileモジュール｜state=touch: 空のファイルを新規作成
+      file: dest=/home/testuser/.ssh/authorized_keys state=touch owner=testuser group=testuser mode=600
+
+    - name: generate ssh key
+      # SSH鍵ペアの生成
+      ## userモジュール｜generate_ssh_key=yes: SSH鍵ペアを生成
+      user: name=testuser generate_ssh_key=yes
