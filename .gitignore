@@ -1,1 +1,2 @@
-servers.yml
+/servers.yml
+.vagrant/
