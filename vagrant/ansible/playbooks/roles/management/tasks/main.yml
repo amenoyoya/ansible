@@ -1,0 +1,47 @@
+---
+- name: 管理者グループ作成
+  # groupモジュール｜name=<グループ名> state=<present（作成）|absent（削除）>
+  # {{変数名}} で変数を展開可能
+  group: name={{ admin_group }} state=present
+
+- name: 管理者グループをsudoersに追加
+  # モジュールは `module_name: param1=var1 ...`（1行表記）という書き方だけでなく
+  ## `module_name:
+  ##    param1: var1
+  ##    ... `（複数行表記）という書き方も可能
+  lineinfile:
+    path: /etc/sudoers
+    state: present # /etc/sudoers が存在しない場合は作成
+    regexp: "%{{ admin_group }}" # "%グループ名" にマッチする行を line で指定した文字列で置換
+    line: "%{{ admin_group }} ALL=(ALL) NOPASSWD: ALL"
+
+- name: 管理者ユーザ作成
+  # with_items: '配列' で配列を処理できる｜foreach item in 配列
+  ## ユーザ作成時に SSH鍵ペアも作成しておく
+  user: name={{ item.name }} group={{ admin_group }} groups={{ admin_group }} uid={{ item.uid }} generate_ssh_key=yes
+  with_items: '{{ admin_users }}'
+
+- name: 実際に管理者グループに属するユーザのリストを取得
+  shell: 'getent group {{ admin_group }} | cut -d: -f4 | tr "," "\n"'
+  register: present_sudoers # => シェルの実行結果を present_sudoers という変数に代入
+
+- name: すでに存在しないユーザを削除
+  # ユーザのホームディレクトリごと削除
+  user: name={{ item }} state=absent remove=yes
+  # 実際に管理者グループに属するユーザと admin_users に設定されたユーザの差分 => 削除するべきユーザ
+  ## `[{key: val}, ...] | map(attribute="key") | list` で dictの指定キーのみを取り出してリスト化可能
+  with_items: '{{ present_sudoers.stdout_lines | difference(admin_users | map(attribute="name") | list) }}'
+  ignore_errors: yes # ユーザが削除済みの場合があるためエラーは無視
+
+- name: 管理者ユーザの公開鍵登録
+  copy:
+    src: '/home/{{ item.name }}/.ssh/id_rsa.pub'
+    dest: '/home/{{ item.name }}/.ssh/authorized_keys'
+    owner: '{{ item.name }}'
+    group: '{{ admin_group }}'
+    remote_src: yes # リモートサーバ内でファイルコピー
+  with_items: '{{ admin_users }}'
+
+- name: 管理者ユーザの秘密鍵ダウンロード
+  fetch: src=/home/{{ item.name }}/.ssh/id_rsa dest=../ssh/{{ item.name }}-id_rsa flat=yes
+  with_items: '{{ admin_users }}'

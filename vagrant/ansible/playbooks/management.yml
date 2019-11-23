@@ -1,0 +1,5 @@
+---
+- hosts: management
+  become: true # root権限で実行
+  roles:
+    - management # ./roles/management/tasks/main.yml を実行

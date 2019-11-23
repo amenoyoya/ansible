@@ -1,0 +1,3 @@
+---
+# 共通セキュリティ基本設定
+- import_playbook: playbooks/management.yml
