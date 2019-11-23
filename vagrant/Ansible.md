@@ -203,3 +203,54 @@ $ ansible-playbook -i servers.yml playbook.yml
 ## => changed=0 となり、現在のサーバの状態に合わせて何の変更も加えなかったことが分かる
 vagrant  : ok=6  changed=0  unreachable=0  failed=0  skipped=0  rescued=0  ignored=0
 ```
+
+### 複数のSSH接続ユーザ設定
+ここまで設定すると `testuser` ユーザでもSSH接続できるようになる
+
+まずは普通に `ssh`コマンドで接続してみる
+
+```bash
+# Ansibleにより生成＆ダウンロードされたSSH秘密鍵のパーミッションを変更
+$ chmod 600 ./ssh/testuser-id_rsa
+
+# testuserユーザでSSH接続
+$ ssh -i ./ssh/testuser-id_rsa testuser@172.17.8.100
+
+---
+# SSH接続できることを確認したらそのまま exit
+[testuser ~]$ exit
+```
+
+続いてインベントリファイル `servers.yml` に `testuser`ユーザでのSSH接続設定を追加する
+
+```yaml
+all:
+  hosts: # ホスト定義
+    vagrant: # vagrant host
+      ansible_host: 172.17.8.100 # 指定サーバのIPアドレス
+      # vagrant host の SSH接続設定
+      ansible_ssh_port: 22 # SSH接続ポートは通常 22番
+      ansible_ssh_user: vagrant # SSH接続ユーザ名
+      ansible_ssh_private_key_file: ./.vagrant/machines/default/virtualbox/private_key # SSH秘密鍵
+      ansible_sudo_pass: vagrant # rootユーザパスワード
+    test: # test host
+      ansible_host: 172.17.8.100
+      # test host の SSH接続設定
+      ansible_ssh_port: 22
+      ansible_ssh_user: testuser # testuserで接続
+      ansible_ssh_private_key_file: ./ssh/testuser-id_rsa
+      ansible_sudo_pass: vagrant
+```
+
+上記のように、ホストエイリアスごとに `ansible_***` の設定を記述することができるため、SSH接続設定もそのような記述方法に変更している
+
+`testuser`ユーザで接続するための `test`ホストの設定を用いてAnsibleコマンドを実行してみる
+
+```bash
+# ansible command by `test` host
+## whoami コマンドをサーバ内で実行
+$ ansible test -i servers.yml -m command -a "whoami"
+
+## => testuser
+### ログインユーザ名が返ってきたら成功
+```
