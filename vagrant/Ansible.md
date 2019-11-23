@@ -158,7 +158,8 @@ Playbookファイルもyaml形式で記述し、ファイル名は任意だが�
     - name: mkdir .ssh
       # .sshフォルダの作成
       ## fileモジュール｜path=<ファイルパス> state=<file|directory|...> owner=<所有者> group=<所有グループ> mode=<パーミッション>
-      file: path=/home/testuser/.ssh/ state=directory owner=testuser group=testuser mode=700
+      ### パーミッションは8進数で指定しなければならないため 0700 や '700' などのように指定すること
+      file: path=/home/testuser/.ssh/ state=directory owner=testuser group=testuser mode=0700
 
     - name: generate ssh key
       # SSH鍵ペアの生成
