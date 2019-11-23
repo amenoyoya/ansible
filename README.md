@@ -75,7 +75,15 @@ ansible 2.9.1
 ---
 
 ### Vagrant仮想サーバを用いたAnsible動作確認
-Read [vagrant/Ansible.md](./vagrant/Ansible.md)
+Read [vagrant/Ansible.md](./vagrant/Ansible.md).
+
+***
+
+## サーバ構築のテンプレート作成
+
+Ansibleを用いて、割とよく使うサーバ構成をテンプレート化する
+
+Read [Server.md](./Server.md).
 
 ***
 
