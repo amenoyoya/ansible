@@ -145,7 +145,7 @@ AnsibleにはPlaybookという、サーバ構成・状態を定義し、自動�
 Playbookファイルもyaml形式で記述し、ファイル名は任意だが、ここでは `playbook.yml` として以下のように記述する
 
 ```yaml
-- hosts: all # イベントリファイルに記述されたすべてのホストに対して実行
+- hosts: vagrant # イベントリファイルに記述された vagrant ホスト（エイリアス）に対して実行
   become: true # sudo権限で実行
   tasks: # 各タスク定義｜nameは任意項目だが、分かりやすい名前をつけておくと管理しやすい
     - name: add a new user
@@ -167,6 +167,13 @@ Playbookファイルもyaml形式で記述し、ファイル名は任意だが�
       ### => /home/testuser/.ssh/ に id_rsa（秘密鍵）, id_rsa.pub（公開鍵）生成
       user: name=testuser generate_ssh_key=yes
     
+    - name: ssh key authentication
+      # 公開鍵をSSH認証鍵として登録
+      ## copyモジュール｜src=<コピー元パス> dest=<コピー先パス> remote_src=<no|yes>
+      ### remote_src=yes にするとリモートホスト内でファイルコピーを実行（remote_src=no ならアップロード処理に近い挙動）
+      ### /home/testuser/.ssh/id_rsa.pub => authorized_keys に変更
+      copy: src=/home/testuser/.ssh/id_rsa.pub dest=/home/testuser/.ssh/authorized_keys owner=testuser group=testuser mode=0600 remote_src=yes
+
     - name: download ssh-key
       # SSH鍵のダウンロード
       ## fetchモジュール｜src=<サーバ内のファイルパス> dest=<ローカルの保存先パス> flat=<no|yes>
@@ -182,7 +189,7 @@ playbook.yml が作成できたら、以下のコマンドでPlaybookを実行
 # ansible-playbook -i <インベントリファイル> <Playbookファイル>
 $ ansible-playbook -i servers.yml playbook.yml
     :
-vagrant  : ok=5  changed=5  unreachable=0  failed=0  skipped=0  rescued=0  ignored=0
+vagrant  : ok=6  changed=6  unreachable=0  failed=0  skipped=0  rescued=0  ignored=0
 ```
 
 実行すると、`testuser`ユーザが作成され、そのユーザでログインするためのSSH秘密鍵を `./ssh/testuser-id_rsa` に保存することができるはず
@@ -194,5 +201,5 @@ vagrant  : ok=5  changed=5  unreachable=0  failed=0  skipped=0  rescued=0  ignor
 $ ansible-playbook -i servers.yml playbook.yml
     :
 ## => changed=0 となり、現在のサーバの状態に合わせて何の変更も加えなかったことが分かる
-vagrant  : ok=5  changed=0  unreachable=0  failed=0  skipped=0  rescued=0  ignored=0
+vagrant  : ok=6  changed=0  unreachable=0  failed=0  skipped=0  rescued=0  ignored=0
 ```

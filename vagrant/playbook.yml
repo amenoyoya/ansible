@@ -1,4 +1,4 @@
-- hosts: all # イベントリファイルに記述されたすべてのホストに対して実行
+- hosts: vagrant # イベントリファイルに記述された vagrant ホスト（エイリアス）に対して実行
   become: true # sudo権限で実行
   tasks: # 各タスク定義｜nameは任意項目だが、分かりやすい名前をつけておくと管理しやすい
     - name: add a new user
@@ -20,6 +20,13 @@
       ### => /home/testuser/.ssh/ に id_rsa（秘密鍵）, id_rsa.pub（公開鍵）生成
       user: name=testuser generate_ssh_key=yes
     
+    - name: ssh key authentication
+      # 公開鍵をSSH認証鍵として登録
+      ## copyモジュール｜src=<コピー元パス> dest=<コピー先パス> remote_src=<no|yes>
+      ### remote_src=yes にするとリモートホスト内でファイルコピーを実行（remote_src=no ならアップロード処理に近い挙動）
+      ### /home/testuser/.ssh/id_rsa.pub => authorized_keys に変更
+      copy: src=/home/testuser/.ssh/id_rsa.pub dest=/home/testuser/.ssh/authorized_keys owner=testuser group=testuser mode=0600 remote_src=yes
+
     - name: download ssh-key
       # SSH鍵のダウンロード
       ## fetchモジュール｜src=<サーバ内のファイルパス> dest=<ローカルの保存先パス> flat=<no|yes>
