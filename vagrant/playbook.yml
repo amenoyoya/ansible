@@ -1,4 +1,4 @@
-- hosts: all
+- hosts: all # イベントリファイルに記述されたすべてのホストに対して実行
   become: true # sudo権限で実行
   tasks: # 各タスク定義｜nameは任意項目だが、分かりやすい名前をつけておくと管理しやすい
     - name: add a new user
@@ -13,12 +13,14 @@
       ## fileモジュール｜path=<ファイルパス> state=<file|directory|...> owner=<所有者> group=<所有グループ> mode=<パーミッション>
       file: path=/home/testuser/.ssh/ state=directory owner=testuser group=testuser mode=700
 
-    - name: add authorized keys
-      # .ssh/ 配下に authorized_keys ファイルの作成
-      ## fileモジュール｜state=touch: 空のファイルを新規作成
-      file: dest=/home/testuser/.ssh/authorized_keys state=touch owner=testuser group=testuser mode=600
-
     - name: generate ssh key
       # SSH鍵ペアの生成
       ## userモジュール｜generate_ssh_key=yes: SSH鍵ペアを生成
+      ### => /home/testuser/.ssh/ に id_rsa（秘密鍵）, id_rsa.pub（公開鍵）生成
       user: name=testuser generate_ssh_key=yes
+    
+    - name: download ssh-key
+      # SSH鍵のダウンロード
+      ## fetchモジュール｜src=<サーバ内のファイルパス> dest=<ローカルの保存先パス> flat=<no|yes>
+      ### flat=noだと、srcで指定したパスをまるごと保存してしまうため、yesを指定してファイル名のみでファイルを保存するようにする
+      fetch: src=/home/testuser/.ssh/id_rsa dest=./ssh/testuser-id_rsa flat=yes

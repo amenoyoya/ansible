@@ -136,3 +136,62 @@ $ ansible vagrant -i servers.yml -m command -a "hostname"
 ## => localhost.localdomain
 ### ここまでの設定が正しくできていれば上記のようなホスト名が返ってくるはず
 ```
+
+### Playbookによるサーバ構成自動化
+AnsibleにはPlaybookという、サーバ構成・状態を定義し、自動的に構成を行うことのできる仕組みがある
+
+ここでは、サーバにユーザを新規作成し、SSH鍵を使ってSSH接続できるように構成する
+
+Playbookファイルもyaml形式で記述し、ファイル名は任意だが、ここでは `playbook.yml` として以下のように記述する
+
+```yaml
+- hosts: all # イベントリファイルに記述されたすべてのホストに対して実行
+  become: true # sudo権限で実行
+  tasks: # 各タスク定義｜nameは任意項目だが、分かりやすい名前をつけておくと管理しやすい
+    - name: add a new user
+      # Linuxユーザの作成
+      ## userモジュール｜name=<ユーザ名> state=<present|absent> uid=<ユーザID>
+      ### present: 存在する状態（存在しない場合は作成）, absent: 存在しない状態（存在する場合は削除）
+      ### uidは指定しなくとも良いが、複数サーバでユーザIDを統一するためには指定しておく必要がある
+      user: name=testuser state=present uid=1001
+
+    - name: mkdir .ssh
+      # .sshフォルダの作成
+      ## fileモジュール｜path=<ファイルパス> state=<file|directory|...> owner=<所有者> group=<所有グループ> mode=<パーミッション>
+      file: path=/home/testuser/.ssh/ state=directory owner=testuser group=testuser mode=700
+
+    - name: generate ssh key
+      # SSH鍵ペアの生成
+      ## userモジュール｜generate_ssh_key=yes: SSH鍵ペアを生成
+      ### => /home/testuser/.ssh/ に id_rsa（秘密鍵）, id_rsa.pub（公開鍵）生成
+      user: name=testuser generate_ssh_key=yes
+    
+    - name: download ssh-key
+      # SSH鍵のダウンロード
+      ## fetchモジュール｜src=<サーバ内のファイルパス> dest=<ローカルの保存先パス> flat=<no|yes>
+      ### flat=noだと、srcで指定したパスをまるごと保存してしまうため、yesを指定してファイル名のみでファイルを保存するようにする
+      fetch: src=/home/testuser/.ssh/id_rsa dest=./ssh/testuser-id_rsa flat=yes
+```
+
+各タスクの内容は、コメントの通りである
+
+playbook.yml が作成できたら、以下のコマンドでPlaybookを実行
+
+```bash
+# ansible-playbook -i <インベントリファイル> <Playbookファイル>
+$ ansible-playbook -i servers.yml playbook.yml
+    :
+vagrant  : ok=5  changed=5  unreachable=0  failed=0  skipped=0  rescued=0  ignored=0
+```
+
+実行すると、`testuser`ユーザが作成され、そのユーザでログインするためのSSH秘密鍵を `./ssh/testuser-id_rsa` に保存することができるはず
+
+なお、もう一度Playbookを実行すると `changed=0` となり、最終的なサーバ構成・状態は同一になることが担保されている（**べき等性**）
+
+```bash
+# もう一度Playbookを実行した場合
+$ ansible-playbook -i servers.yml playbook.yml
+    :
+## => changed=0 となり、現在のサーバの状態に合わせて何の変更も加えなかったことが分かる
+vagrant  : ok=5  changed=0  unreachable=0  failed=0  skipped=0  rescued=0  ignored=0
+```
