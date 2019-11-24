@@ -258,3 +258,23 @@ $ ansible test -i servers.yml -m command -a "whoami"
 基本的な使い方は以上である
 
 その他、Ansibleで使用できるモジュールなどは[公式ページ](https://docs.ansible.com/ansible/latest/modules/modules_by_category.html)を参照すると良い
+
+***
+
+## 仮想マシンの初期化
+
+サーバの設定を色々していると、設定を間違えてSSH接続できなくなったりなどのトラブルが起こり得る
+
+そのような場合は、Vagrant仮想マシンを一度破壊して再構築してしまうのが早い
+
+```bash
+# vagrant仮想マシンの破壊
+$ vagrant destroy -y
+
+# vagrant仮想マシンの構築＆起動
+$ vagrant up
+
+# 再構築するとSSH鍵の設定が変更されるため、登録済みの鍵情報を削除する必要がある
+## Windows環境では ssh-keygen が使えないため、直接 ~/.ssh/known_hosts を編集する
+$ ssh-keygen -f ~/.ssh/known_hosts -R "172.17.8.100"
+```
