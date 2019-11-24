@@ -190,6 +190,7 @@ user_group: 'developers'
     dest: '/home/{{ item.name }}/.ssh/authorized_keys'
     owner: '{{ item.name }}'
     group: '{{ admin_group }}'
+    mode: 0600 # パーミッションは8進数で記述すること
     remote_src: yes # リモートサーバ内でファイルコピー
   with_items: '{{ admin_users }}'
 
