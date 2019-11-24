@@ -6,12 +6,32 @@
 # 一般ユーザ設定
 - include: users.yml
 
+# SELinux無効化設定
+- include: selinux_disabled.yml
+
 - name: sshd設定
   # Jinja2テンプレートエンジンを利用してテンプレートファイルを展開してアップロード
   # templateモジュール｜src=<テンプレートファイル> dest=<アップロード先ファイルパス> ...
   ## テンプレートファイル内では {{変数名}} で変数を展開できる（詳しくは Jinja2 公式リファレンス参照）
   template: src=../templates/sshd_config.j2 dest=/etc/ssh/sshd_config owner=root group=root mode=0600
 
-- name: sshd再起動
-  # serviceモジュール｜name=<サービス名> state=<reloaded|restarted|started|stopped> ...
-  service: name=sshd state=restarted
+- name: sshd再起動＆スタートアップ登録
+  # serviceモジュール｜name=<サービス名> state=<reloaded|restarted|started|stopped> enabled=<false|true> ...
+  ## enabled=true にするとスタートアップサービスに登録することができる
+  service: name=sshd state=restarted enabled=true
+
+- name: iptables設定
+  template: src=../templates/iptables.j2 dest=/etc/sysconfig/iptables owner=root group=root mode=0600
+
+# CentOS 7 以降は iptables が入っていないことがあるためインストールする
+- name: iptablesインストール
+  # yumモジュール｜name=<パッケージ名> state=<present|absent> ...
+  yum: name=iptables state=present
+
+# CentOS 7 以降は iptables の代わりに firewalld がデフォルトになっているため停止する
+- name: firewalld停止＆スタートアップ削除
+  service: name=firewalld state=stopped enabled=false
+  ignore_errors: yes # CentOS 6 なら firewalld は存在しないためエラーは無視
+
+- name: iptables（再）起動＆スタートアップ登録
+  service: name=firewalld state=restarted enabled=true

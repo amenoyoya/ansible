@@ -1,10 +1,8 @@
 # sshd protocol
 Protocol 2
 
-#Port 22
-#AddressFamily any
-#ListenAddress 0.0.0.0
-#ListenAddress ::
+# sshd port
+Port {{ ssh_port }}
 
 # Logging
 #SyslogFacility AUTH

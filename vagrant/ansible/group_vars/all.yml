@@ -12,7 +12,32 @@ users:
   - name: 'vagrant-user'
     uid: 2001
 
+# ---
+
 # グループ設定
 ## 基本的に編集しない
 admin_group: 'admin'
 user_group: 'developers'
+
+# ---
+
+# SSH接続ポート
+## 推測されにくく、他のアプリケーションポートと重複しないポートを指定する
+ssh_port: 22
+
+# 外部からのアクセスを許可するポート
+accept_ports:
+  # httpポート
+  - port: 80
+    protocol: 'tcp'
+  
+  # httpsポート
+  - port: 443
+    protocol: 'tcp'
+
+# ---
+
+# サーバ再起動待ちのタイムアウト時間 [秒]
+## Vagrant環境だと実際には reboot が起こらないため、短めのタイムアウト時間を指定した方が良い
+## 通常のサーバであれば、それなりに長いタイムアウト時間を指定する必要がある
+reboot_wait_timeout: 10

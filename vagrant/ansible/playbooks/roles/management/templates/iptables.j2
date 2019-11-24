@@ -1,0 +1,48 @@
+# ポリシーの設定: OUTPUTのみ許可
+## INPUT: 外部ネットワークからのアクセス => 一旦全て拒否にしておいて、ポートごとに個別に許可する
+## FORWARD: データを別サーバに転送 => 今回ポートフォワーディングは必要ないためすべて拒否
+## OUTPUT: 外部ネットワークへのデータ出力はすべて許可
+*filter
+:INPUT   DROP   [0:0]
+:FORWARD DROP   [0:0]
+:OUTPUT  ACCEPT [0:0]
+
+# ループバック(自分自身からの通信)を許可する
+-A INPUT -i lo -j ACCEPT
+
+# データを持たないパケットの接続を破棄する
+-A INPUT -p tcp --tcp-flags ALL NONE -j DROP
+
+# SYNflood攻撃と思われる接続を破棄する
+-A INPUT -p tcp ! --syn -m state --state NEW -j DROP
+
+# ステルススキャン(ポートスキャンの一種)と思われる接続を破棄する
+-A INPUT -p tcp --tcp-flags ALL ALL -j DROP
+
+# icmp(ping)を限定的にアクセス許可
+## -m hashlimit              hashlimitモジュールを使い、限定的なアクセス許可を行う
+## --hashlimit-name          記録するファイル名: t_icmp
+## --hashlimit               リミット時のアクセス上限: 1/m (1分間に1アクセス)
+## --hashlimit-burst         リミットを有効にする上限アクセス数: 10 (規定時間内に10パケット受信したら制限)
+## --hashlimit-mode          アクセス制限の対象: srcip (アクセス元IPをもとに制限)
+## --hashlimit-htable-expire リミットの有効期間[ms]: 120000 (120秒 = 2分)
+-A INPUT -p icmp --icmp-type echo-request -m hashlimit --hashlimit-name t_icmp --hashlimit 1/m --hashlimit-burst 10 --hashlimit-mode srcip --hashlimit-htable-expire 120000 -j ACCEPT
+
+# 確立済みの通信は、ポート番号に関係なく許可
+-A INPUT -p tcp -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+# 任意へのDNSアクセスの戻りパケットを許可
+-A INPUT -p udp --sport 53 -j ACCEPT
+
+# SSH接続を許可
+## 変数 ssh_port で定義されたポートを開放
+-A INPUT -p tcp --dport {{ ssh_port }} -j ACCEPT
+
+# 個別に許可するプロトコルとポート
+## 変数 accept_ports 配列で定義されたポートを開放
+{% for item in accept_ports %}
+-A INPUT -p {{ item.protocol }} --dport {{ item.port }} -j ACCEPT
+{% endfor %}
+
+# 反映
+COMMIT
