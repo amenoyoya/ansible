@@ -1,3 +1,6 @@
+# sshd protocol
+Protocol 2
+
 #Port 22
 #AddressFamily any
 #ListenAddress 0.0.0.0
@@ -81,7 +84,7 @@ AcceptEnv XMODIFIERS
 #Subsystem  sftp  /usr/libexec/openssh/sftp-server
 Subsystem  sftp  internal-sftp
 
-## sftpのみ許可するユーザグループの設定
+# sftpのみ許可するユーザグループの設定
 Match Group {{ user_group }}
     # ログインシェルに internal-sftp を強制
     ForceCommand internal-sftp

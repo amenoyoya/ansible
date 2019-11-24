@@ -36,11 +36,11 @@
         - 使われていないサービスが動いていると、管理コストが高くなり、想定外の動作が起こる可能性もあるため極力停止する
             - 参考: [Linuxで止めるべきサービスと止めないサービスの一覧](https://tech-mmmm.blogspot.com/2016/03/linux.html)
 
-### ユーザ管理
+### sshd設定とユーザ管理
 参考: [Ansible Playbookでユーザ管理（登録・削除）をまるっとやる](https://tech.smartcamp.co.jp/entry/2019/05/10/215035?utm_source=feed)
 公式: [Best Practice - Ansible Documentation](https://docs.ansible.com/ansible/latest/user_guide/playbooks_best_practices.html)
 
-まずは、運用に工夫が必要なユーザ管理から設定していく
+まずは、運用に工夫が必要なsshd設定とユーザ管理から設定していく
 
 ディレクトリ構成は、Ansibleのベストラクティスを参考にしつつ以下のような構成とした
 
@@ -56,7 +56,12 @@
 |   |_ roles/ # Playbookで実行されるタスクを役割ごとに格納するディレクトリ
 |       |_ management/ # このディレクトリ名（role）は親Playbookの名前と揃える
 |           |_ tasks/  # 共通セキュリティ設定で実行するタスクを格納するディレクトリ
-|               |_ main.yml # 共通セキュリティ設定で実行されるタスク定義ファイル
+|           |   |_ main.yml # 共通セキュリティ設定で実行されるメインタスク定義ファイル
+|           |   |_ admin_users.yml # 管理者ユーザ関連のタスク定義ファイル（main.yml から include される）
+|           |   |_ users.yml # 一般ユーザ関連のタスク定義ファイル（main.yml から include される）
+|           |
+|           |_ templates/ # Jinja2テンプレートファイル格納ディレクトリ
+|               |_ sshd_config.j2 # /etc/ssh/sshd_config に展開される設定テンプレートファイル
 |
 |_ ssh/ # ユーザごとの秘密鍵を格納するディレクトリ
         ## この部分の運用については考える必要があるかもしれない
@@ -101,7 +106,7 @@ playbooks/ 内のroleごとのPlaybookファイルをimportするだけ
 ```
 
 #### group_vars/all.yml
-各種変数を定義するためのファイル
+各種変数を定義するためのファイル（このファイルはPlaybook実行時に自動的に読み込まれる）
 
 ユーザ管理をこのファイルで行う想定で記述している
 
@@ -146,8 +151,36 @@ user_group: 'developers'
 #### playbooks/roles/management/tasks/main.yml
 対応するrole名のPlaybookから呼び出される各種タスクを定義するファイル
 
-今回は、管理者ユーザ管理に関するタスクのみを以下のように記述している
+今回は、以下のようにタスクを定義している
 
+1. 管理者ユーザ関連タスク:
+    - `admin_users.yml` を include
+2. 一般ユーザ関連タスク:
+    - `users.yml` を include
+3. sshd設定関連タスク:
+    - `sshd_config.j2` テンプレートファイルを `/etc/ssh/sshd_config` に展開し、sshd再起動
+
+```yaml
+---
+# 管理者ユーザ設定
+## includeモジュールで 別ファイルの中身をそのまま展開できる
+- include: admin_users.yml
+
+# 一般ユーザ設定
+- include: users.yml
+
+- name: sshd設定
+  # Jinja2テンプレートエンジンを利用してテンプレートファイルを展開してアップロード
+  # templateモジュール｜src=<テンプレートファイル> dest=<アップロード先ファイルパス> ...
+  ## テンプレートファイル内では {{変数名}} で変数を展開できる（詳しくは Jinja2 公式リファレンス参照）
+  template: src=../templates/sshd_config.j2 dest=/etc/ssh/sshd_config owner=root group=root mode=0600
+
+- name: sshd再起動
+  # serviceモジュール｜name=<サービス名> state=<reloaded|restarted|started|stopped> ...
+  service: name=sshd state=restarted
+```
+
+#### playbooks/roles/management/tasks/admin_users.yml
 ```yaml
 ---
 - name: 管理者グループ作成
@@ -162,7 +195,6 @@ user_group: 'developers'
   ##    ... `（複数行表記）という書き方も可能
   lineinfile:
     path: /etc/sudoers
-    state: present # /etc/sudoers が存在しない場合は作成
     regexp: "%{{ admin_group }}" # "%グループ名" にマッチする行を line で指定した文字列で置換
     line: "%{{ admin_group }} ALL=(ALL) NOPASSWD: ALL"
 
@@ -199,20 +231,80 @@ user_group: 'developers'
   with_items: '{{ admin_users }}'
 ```
 
+#### playbooks/roles/management/tasks/users.yml
+`admin_users.yml` とほぼ同じ内容のため省略
+
+#### playbooks/roles/management/templates/sshd_config.j2
+sshd設定ファイルの内容をJinja2テンプレートを用いて記述している
+
+Jinja2で使える表記法については、[公式リファレンス](https://jinja.palletsprojects.com/en/2.10.x/templates/)を参照
+
+なお、SSH接続ポートの変更は、Firewall（iptables）の設定とも関わってくるため、ここではまだ設定していない
+
+```conf
+# (略)
+
+# sshd protocol
+Protocol 2
+
+# 認証試行時間: 30秒
+LoginGraceTime 30
+
+# 認証試行回数: 30回
+MaxAuthTries 30
+
+# rootログイン不可
+PermitRootLogin no
+
+# パスワード認証不可｜公開鍵認証のみ許可
+PasswordAuthentication no
+ChallengeResponseAuthentication no
+PubkeyAuthentication yes
+AuthorizedKeysFile	.ssh/authorized_keys
+
+# sftp で chroot させたい場合は internal-sftp を使う必要あり
+#Subsystem  sftp  /usr/libexec/openssh/sftp-server
+Subsystem  sftp  internal-sftp
+
+# sftpのみ許可するユーザグループの設定
+## {{変数名}} で変数を展開可能
+Match Group {{ user_group }}
+    # ログインシェルに internal-sftp を強制
+    ## => ssh接続はできず、sftp接続のみ可能になる
+    ForceCommand internal-sftp
+```
+
 #### Playbook実行
 ここまでで一旦、動作確認を行う
 
 ```bash
 # Playbook実行
-$ ansible-palybook -i production.yml main.yml
+$ ansible-playbook -i production.yml main.yml
     :
-management  : ok=7  changed=6  unreachable=0  failed=0  skipped=1  rescued=0  ignored=0
+management  : ok=14  changed=12  unreachable=0  failed=0  skipped=2  rescued=0  ignored=0
 
-## => ssh/vagrant-admin-id_rsa が保存されるはず
+## => ssh/vagrant-admin-id_rsa, vagrant-user-id_rsa が保存されるはず
 
-# 作成されたユーザでSSH接続確認
+# 作成された管理者ユーザでSSH接続確認
 $ chown 600 ssh/vagrant-admin-id_rsa
 $ ssh -i ssh/vagrant-admin-id_rsa vagrant-admin@172.17.8.100
 
+---
 ## => 問題なく接続できたらOK
+[vagrant-admin ~]$ exit
+---
+
+# 一般ユーザでSSH接続試行
+$ chown 600 ssh/vagrant-user-id_rsa
+$ ssh -i ssh/vagrant-user-id_rsa vagrant-user@172.17.8.100
+
+## => This service allows sftp connections only.
+### 上記のようなエラーが出て接続を拒否されればOK
+
+# 一般ユーザでSFTP接続確認
+$ sftp -i ssh/vagrant-user-id_rsa vagrant-user@172.17.8.100
+
+---
+## => 問題なく接続できたらOK
+sftp> exit
 ```
