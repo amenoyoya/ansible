@@ -254,3 +254,7 @@ $ ansible test -i servers.yml -m command -a "whoami"
 ## => testuser
 ### ログインユーザ名が返ってきたら成功
 ```
+
+基本的な使い方は以上である
+
+その他、Ansibleで使用できるモジュールなどは[公式ページ](https://docs.ansible.com/ansible/latest/modules/modules_by_category.html)を参照すると良い
