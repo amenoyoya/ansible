@@ -1,0 +1,30 @@
+---
+- name: ユーザグループ作成
+  group: name={{ user_group }} state=present
+
+- name: 一般ユーザ作成
+  user: name={{ item.name }} group={{ user_group }} groups={{ user_group }} uid={{ item.uid }} generate_ssh_key=yes
+  with_items: '{{ users }}'
+
+- name: 実際にユーザグループに属するユーザのリストを取得
+  shell: 'getent group {{ user_group }} | cut -d: -f4 | tr "," "\n"'
+  register: present_users
+
+- name: すでに存在しないユーザを削除
+  user: name={{ item }} state=absent remove=yes
+  with_items: '{{ present_users.stdout_lines | difference(users | map(attribute="name") | list) }}'
+  ignore_errors: yes
+
+- name: 一般ユーザの公開鍵登録
+  copy:
+    src: '/home/{{ item.name }}/.ssh/id_rsa.pub'
+    dest: '/home/{{ item.name }}/.ssh/authorized_keys'
+    owner: '{{ item.name }}'
+    group: '{{ user_group }}'
+    mode: 0600
+    remote_src: yes
+  with_items: '{{ users }}'
+
+- name: 一般ユーザの秘密鍵ダウンロード
+  fetch: src=/home/{{ item.name }}/.ssh/id_rsa dest=../ssh/{{ item.name }}-id_rsa flat=yes
+  with_items: '{{ users }}'
