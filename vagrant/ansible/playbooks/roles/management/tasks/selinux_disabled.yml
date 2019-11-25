@@ -8,26 +8,26 @@
 
 - name: SELinuxの無効化
   selinux: state=disabled
-  register: selinux
+  register: selinux # => selinuxモジュールの実行結果を selinux 変数に代入
 
 - name: マシンのリブート
   shell: "sleep 2 && reboot"
   async: 1 # シェルを同期的に実行
   poll: 0
-  when: selinux.reboot_required
+  when: selinux.reboot_required # selinuxが再起動を要求した場合に実行
 
 - name: マシンの停止を待ち合わせ
   # local_actionモジュール｜Ansible実行マシンに対してコマンドを実行
   ## inventory_hostname: 現在Playbookが実行中のインベントリホスト名が入っている
   ## インベントリホストに対して状態を問い合わせ、状態が stopped になるまで待つ 
   local_action: wait_for host={{ inventory_hostname }} port={{ ansible_ssh_port }} state=stopped
-  when: selinux.reboot_required
+  when: selinux.reboot_required # selinuxが再起動を要求した場合に実行
   become: false # local_actionを使う場合は become=false にしておかないと rootパスワード周りでエラーが起こる
 
 - name: マシンの起動を待ち合わせ
   # インベントリホスト(ssh port: 22)に対して状態を問い合わせ、状態が started になるまで待つ
   ## reboot_wait_timeout で指定された秒数が経過したら強制的に次のタスクへ移行
   local_action: wait_for host={{ inventory_hostname }} port={{ ansible_ssh_port }} state=started timeout={{ reboot_wait_timeout }}
-  when: selinux.reboot_required
+  when: selinux.reboot_required # selinuxが再起動を要求した場合に実行
   become: false
   ignore_errors: true # vagrant環境だといつまで経ってもこのタスクは終わらないため、タイムアウトしたらそのまま無視する
