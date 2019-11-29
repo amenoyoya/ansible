@@ -246,7 +246,18 @@ $ chown 600 ssh/vagrant-admin-id_rsa
 $ ssh -i ssh/vagrant-admin-id_rsa vagrant-admin@172.17.8.100
 
 ---
-## => 問題なく接続できたらOK
+## => 問題なく接続できたら、ポートの確認を行う
+
+# iptables の開放ポートを確認
+[vagrant-admin ~]$ sudo iptables -nL
+
+# SELinuxを有効化している場合: SELinuxのポリシーを確認
+## 普通に semanage を実行すると UnicodeEncodingError が起こるため PYTHONIOENCODING環境変数を設定しながら実行する
+[vagrant-admin ~]$ sudo PYTHONIOENCODING=utf-8 python /usr/sbin/semanage port -l
+
+## => iptables, SELinux の開放ポート（特にSSHポート）が想定通り設定されていればOK
+
+# SSH切断
 [vagrant-admin ~]$ exit
 ---
 

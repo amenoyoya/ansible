@@ -16,7 +16,7 @@
 # CentOS 7 以降は iptables が入っていないことがあるためインストールする
 - name: iptablesインストール
   # yumモジュール｜name=<パッケージ名> state=<present|absent> ...
-  yum: name=iptables state=present
+  yum: name=iptables-services state=present
 
 # CentOS 7 以降は iptables の代わりに firewalld がデフォルトになっているため停止する
 - name: firewalld停止＆スタートアップ削除
@@ -24,4 +24,4 @@
   ignore_errors: yes # CentOS 6 なら firewalld は存在しないためエラーは無視
 
 - name: iptables（再）起動＆スタートアップ登録
-  service: name=firewalld state=restarted enabled=true
+  service: name=iptables state=restarted enabled=true

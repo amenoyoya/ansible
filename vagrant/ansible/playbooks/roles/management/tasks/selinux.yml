@@ -1,0 +1,23 @@
+---
+- name: AnsibleのSELinux関連モジュールを使うためのパッケージをインストール
+  # yumモジュール｜name=<パッケージ名（リスト指定可）> state=<present|absent> ...
+  yum:
+    name:
+      - libselinux-python
+      - policycoreutils-python
+    state: present
+
+- name: SELinux｜sshポート開放
+  # seportモジュール｜ports=<ポート番号> proto=<tcp|udp> setype=<ポートのSELinuxタイプ> state=<present|absent> ...
+  ## setype｜sshポート: ssh_port_t, httpポート: http_port_t, メモリキャッシュポート: memcache_port_t, ...
+  seport:
+    ports: '{{ item }}'
+    setype: ssh_port_t
+    proto: tcp
+    state: present
+    reload: yes # 設定反映のためにSELinux再起動
+  with_items: '{{ ssh_ports }}'
+  when: use_selinux # SELinuxを使う場合
+
+- include: selinux_disabled.yml
+  when: not use_selinux # SELinuxを使わない場合

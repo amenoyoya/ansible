@@ -2,7 +2,9 @@
 Protocol 2
 
 # sshd port
-Port {{ ssh_port }}
+{% for port in ssh_ports %}
+Port {{ port }}
+{% endfor %}
 
 # Logging
 #SyslogFacility AUTH

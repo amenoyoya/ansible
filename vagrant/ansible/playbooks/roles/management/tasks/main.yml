@@ -1,7 +1,7 @@
 ---
-# SELinux無効化設定
+# SELinux関連設定
 ## includeモジュールで 別ファイルの中身をそのまま展開できる
-- include: selinux_disabled.yml
+- include: selinux.yml
 
 # 管理者ユーザ設定
 - include: admin_users.yml

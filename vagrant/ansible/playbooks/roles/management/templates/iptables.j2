@@ -35,8 +35,10 @@
 -A INPUT -p udp --sport 53 -j ACCEPT
 
 # SSH接続を許可
-## 変数 ssh_port で定義されたポートを開放
--A INPUT -p tcp --dport {{ ssh_port }} -j ACCEPT
+## 変数 ssh_ports 配列で定義されたポートを開放
+{% for port in ssh_ports %}
+-A INPUT -p tcp --dport {{ port }} -j ACCEPT
+{% endfor %}
 
 # 個別に許可するプロトコルとポート
 ## 変数 accept_ports 配列で定義されたポートを開放

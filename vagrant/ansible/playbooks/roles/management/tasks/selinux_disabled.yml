@@ -2,10 +2,6 @@
 # SELinux が有効化されていると SSHポートの変更等が面倒なので無効化しておく
 ## 参考: http://redj.hatenablog.com/entry/2018/04/22/135933
 
-- name: Ansibleの selinuxモジュールを使うためのパッケージをインストール
-  # yumモジュール｜name=<パッケージ名> state=<present|absent> ...
-  yum: name=libselinux-python state=present
-
 - name: SELinuxの無効化
   selinux: state=disabled
   register: selinux # => selinuxモジュールの実行結果を selinux 変数に代入
