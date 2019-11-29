@@ -1,8 +1,8 @@
 ---
-all:
+# 各グループ名は group_vars/***/, playbooks/***.yml と統一する
+management: # 共通セキュリティ設定グループ
   hosts: # ホスト定義
-    # hosts は playbooks/***.yml の名前に対応させるように定義する
-    management: # management host
+    web: # ホスト名は基本的に web で統一する
       ansible_host: 172.17.8.100 # 指定サーバのIPアドレス
       ansible_ssh_port: 22 # SSH接続ポートは通常 22番
       ansible_ssh_user: vagrant # SSH接続ユーザ名

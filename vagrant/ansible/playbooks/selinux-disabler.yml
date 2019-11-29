@@ -1,5 +1,0 @@
----
-- hosts: selinux-disabler
-  become: true # root権限で実行
-  roles:
-    - selinux-disabler # ./roles/selinux-disabler/tasks/main.yml を実行
