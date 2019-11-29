@@ -9,7 +9,10 @@
 |_ production.yml
 |_ main.yml
 |_ group_vars/
-|   |_ all.yml # ユーザ管理を変数定義で行う運用を想定
+|   |_ all.yml
+|   |_ management/ # グループ名ディレクトリ配下のファイルはPlaybook実行時に自動的に読み込まれる
+|       |_ ports.yml # ポート設定関連の変数定義ファイル
+|       |_ users.yml # ユーザ管理はこのファイルで行う想定
 |
 |_ playbooks/
 |   |_ management.yml
@@ -30,8 +33,31 @@
         ## この部分の運用については考える必要があるかもしれない
 ```
 
-### group_vars/all.yml
-ユーザ管理とポートの設定を追加する
+### group_vars/management/ports.yml
+```yaml
+---
+# SSH接続ポート
+## 推測されにくく、他のアプリケーションポートと重複しないポートを指定する
+## 開発段階では、22 のままにしておいた方が楽
+ssh_port: 22
+
+# 外部からのアクセスを許可するポート
+accept_ports:
+  # httpポート
+  - port: 80
+    protocol: 'tcp'
+  
+  # httpsポート
+  - port: 443
+    protocol: 'tcp'
+```
+
+### group_vars/management/users.yml
+ユーザの追加・削除をしたい場合は、この変数定義ファイルに設定を記述する
+
+SSH接続してサーバ内の各種操作が可能なユーザは `admin_users`, FTP（SFTP）接続してファイルの更新だけが可能なユーザは `users` に設定する
+
+各ユーザがサーバ接続するための鍵ファイルは `ssh`ディレクトリに生成される
 
 ```yaml
 ---
@@ -50,34 +76,10 @@ users:
 
 # ---
 
-# グループ設定
+# ユーザグループ設定
 ## 基本的に編集しない
 admin_group: 'admin'
 user_group: 'developers'
-
-# ---
-
-# SSH接続ポート
-## 推測されにくく、他のアプリケーションポートと重複しないポートを指定する
-## 開発段階では、22 のままにしておいた方が楽
-ssh_port: 22
-
-# 外部からのアクセスを許可するポート
-accept_ports:
-  # httpポート
-  - port: 80
-    protocol: 'tcp'
-  
-  # httpsポート
-  - port: 443
-    protocol: 'tcp'
-
-# ---
-
-# サーバ再起動待ちのタイムアウト時間 [秒]
-## Vagrant環境だと実際には reboot が起こらないため、短めのタイムアウト時間を指定した方が良い
-## 通常のサーバであれば、それなりに長いタイムアウト時間を指定する必要がある
-reboot_wait_timeout: 10
 ```
 
 ### playbooks/roles/management/tasks/main.yml

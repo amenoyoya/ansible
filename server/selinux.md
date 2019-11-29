@@ -2,24 +2,22 @@
 
 SELinuxはセキュアなサーバ運用のために有用ではあるが、SSH接続ポートの変更手順が複雑化するなど、管理コストが高くなることが多いため、ここでは無効化して運用することにする
 
+ただしサーバセキュリティは、場合によっては経営に直接的な影響を与える可能性もあるため、この部分の判断は可能な限り複数人で慎重に検討する必要がある
+
 ## Playbook構成
-
-ディレクトリ構成は、Ansibleのベストラクティスを参考にしつつ以下のような構成とした
-
-参考: [Best Practice - Ansible Documentation](https://docs.ansible.com/ansible/latest/user_guide/playbooks_best_practices.html)
 
 ```bash
 ./
-|_ production.yml # 本番サーバ用インベントリファイル
-|_ main.yml # メインPlaybook｜playbooks/***.yml を読み込んで実行
-|_ group_vars/ # 変数定義ファイル格納ディレクトリ
-|   |_ all.yml # 各種変数の定義ファイル
+|_ production.yml
+|_ main.yml
+|_ group_vars/
+|   |_ all.yml # 全グループ共通の変数定義ファイル
 |
-|_ playbooks/ # 実際にサーバに対する操作を行うファイルを格納するディレクトリ｜インフラ管理者以外は触らない想定
+|_ playbooks/
     |_ management.yml # 共通セキュリティ設定を行うPlaybook｜roles/management/tasks/main.yml のタスクを実行
-    |_ roles/ # Playbookで実行されるタスクを役割ごとに格納するディレクトリ
-        |_ management/ # このディレクトリ名（role）は親Playbookの名前と揃える
-            |_ tasks/  # 共通セキュリティ設定で実行するタスクを格納するディレクトリ
+    |_ roles/
+        |_ management/
+            |_ tasks/
                 |_ main.yml # 共通セキュリティ設定で実行されるメインタスク定義ファイル
                 |_ selinux_disabled.yml # SELinux無効化のタスク定義ファイル（main.yml から include される）
 
@@ -34,10 +32,10 @@ SELinuxはセキュアなサーバ運用のために有用ではあるが、SSH�
 
 ```yaml
 ---
-all:
+# 各グループ名は group_vars/***/, playbooks/***.yml と統一する
+management: # 共通セキュリティ設定グループ
   hosts: # ホスト定義
-    # hosts は playbooks/***.yml の名前に対応させるように定義する
-    management: # management host
+    web: # ホスト名は基本的に web で統一する
       ansible_host: 172.17.8.100 # 指定サーバのIPアドレス
       ansible_ssh_port: 22 # SSH接続ポートは通常 22番
       ansible_ssh_user: vagrant # SSH接続ユーザ名
@@ -47,12 +45,8 @@ all:
 
 yamlファイル先頭の `---` はなくても動くが、慣習的につけることが多いようなのでつけている
 
-今回の運用では、**ホスト（エイリアス）名は role名に対応させるようにしている**
-
-今回の場合、playbooks/ 内にあるのは `management.yml`(共通セキュリティ設定のrole) のみなので、`management`ホスト（エイリアス）の接続情報のみ記述している
-
 ### group_vars/all.yml
-各種変数を定義するためのファイル（このファイルはPlaybook実行時に自動的に読み込まれる）
+全グループで共通して使用可能な変数を定義するためのファイル（このファイルはPlaybook実行時に自動的に読み込まれる）
 
 ここでは、SELinux無効化時に必要な再起動の待ち時間のみ定義している
 
@@ -67,7 +61,7 @@ reboot_wait_timeout: 10
 ### main.yml
 Playbook実行時のエントリーファイル
 
-playbooks/ 内のroleごとのPlaybookファイルをimportするだけ
+`playbooks`ディレクトリ内のRoleごとのPlaybookファイルをimportするだけ
 
 ```yaml
 ---
@@ -78,15 +72,9 @@ playbooks/ 内のroleごとのPlaybookファイルをimportするだけ
 ### playbooks/management.yml
 共通セキュリティ設定を定義するPlaybookファイル
 
-運用上は、以下のような動作をするのが分かりやすいかと考え、設定している
-
-1. Playbookファイル名＝role名とする
-2. インベントリファイル内の、role名に対応するホスト名の接続情報を使用してサーバに接続
-3. playbooks/roles/ ディレクトリ内の対応するrole名のタスクを実行
-
 ```yaml
 ---
-- hosts: management
+- hosts: web # ホスト名は基本的に web で統一する
   become: true # root権限で実行
   roles:
     - management # ./roles/management/tasks/main.yml を実行

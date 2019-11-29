@@ -40,6 +40,43 @@
     - **ポートスキャン対策**
         - ポートスキャンとは、どのポートが開いているか外部から調査する攻撃手法
 
+### ディレクトリ構成
+ディレクトリ構成は、Ansibleのベストラクティスを参考にしつつ以下のような構成とした
+
+参考: [Best Practice - Ansible Documentation](https://docs.ansible.com/ansible/latest/user_guide/playbooks_best_practices.html)
+
+なお、共通セキュリティ設定関連は、**management**グループとしてまとめることとした
+
+```bash
+./
+|_ production.yml # 本番サーバ用インベントリファイル
+|_ main.yml # メインPlaybook｜playbooks/***.yml を読み込んで実行
+|_ group_vars/ # 変数定義ファイル格納ディレクトリ
+|   |_ all.yml # 全グループ共通の変数定義ファイル
+|   |_ management/ # 共通セキュリティ設定関連の変数定義ファイルの格納ディレクトリ
+|       :          ## Playbook名（グループ名）と統一する
+|
+|_ playbooks/ # 実際にサーバに対する操作を行うファイルを格納するディレクトリ｜インフラ管理者以外は触らない想定
+    |_ management.yml # 共通セキュリティ設定を行うPlaybook｜roles/management/tasks/main.yml のタスクを実行
+    |_ roles/ # Playbookで実行されるタスクを役割ごとに格納するディレクトリ
+        |_ management/ # このディレクトリ名（role）は親Playbookの名前と揃える
+            |_ tasks/  # 共通セキュリティ設定で実行するタスクを格納するディレクトリ
+            |   |_ main.yml # 共通セキュリティ設定で実行されるメインタスク定義ファイル
+            |   :
+            |
+            |_ templates/ # 設定ファイル等のテンプレート格納ディレクトリ
+                :
+```
+
+運用方法にもよるが、基本的にグループ名とPlaybook名、Role名は統一したほうが分かりやすい
+
+今回の場合、以下の名前はすべて `management` で統一する
+
+- インベントリファイルに記述するグループ名
+- `group_vars`ディレクトリ配下の、グループ内変数ファイル格納ディレクトリ名
+- `playbooks`ディレクトリ配下の、実行Playbookファイル名
+- `playbooks/roles`ディレクトリ配下の、実行タスク格納ディレクトリ名（Role名）
+
 ### SELinuxの無効化
 まずは不要なサービスを無効化する
 
