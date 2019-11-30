@@ -1,7 +1,7 @@
 # sshd protocol
 Protocol 2
 
-# sshd port
+# sshd port: 複数指定可
 {% for port in ssh_ports %}
 Port {{ port }}
 {% endfor %}

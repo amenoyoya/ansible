@@ -25,5 +25,15 @@
   with_items: '{{ ssh_ports }}'
   when: use_selinux # SELinuxを使う場合
 
+- name: SELinux｜httpポート開放
+  seport:
+    ports: '{{ item.port }}'
+    setype: http_port_t
+    proto: '{{ item.protocol }}'
+    state: present
+    reload: yes # 設定反映のためにSELinux再起動
+  with_items: '{{ accept_ports }}'
+  when: use_selinux # SELinuxを使う場合
+
 - include: selinux_disabled.yml
   when: not use_selinux # SELinuxを使わない場合
