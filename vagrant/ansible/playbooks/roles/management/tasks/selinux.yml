@@ -1,6 +1,10 @@
 ---
 - name: AnsibleのSELinux関連モジュールを使うためのパッケージをインストール
   # yumモジュール｜name=<パッケージ名（リスト指定可）> state=<present|absent> ...
+  # モジュールは `module_name: param1=var1 ...`（1行表記）という書き方だけでなく
+  ## `module_name:
+  ##    param1: var1
+  ##    ... `（複数行表記）という書き方も可能
   yum:
     name:
       - libselinux-python
@@ -11,6 +15,8 @@
   # seportモジュール｜ports=<ポート番号> proto=<tcp|udp> setype=<ポートのSELinuxタイプ> state=<present|absent> ...
   ## setype｜sshポート: ssh_port_t, httpポート: http_port_t, メモリキャッシュポート: memcache_port_t, ...
   seport:
+    # with_items: '配列' で配列を処理できる｜foreach item in 配列
+    ## {{変数名}} で変数の展開が可能
     ports: '{{ item }}'
     setype: ssh_port_t
     proto: tcp

@@ -5,18 +5,13 @@
   group: name={{ admin_group }} state=present
 
 - name: 管理者グループをsudoersに追加
-  # モジュールは `module_name: param1=var1 ...`（1行表記）という書き方だけでなく
-  ## `module_name:
-  ##    param1: var1
-  ##    ... `（複数行表記）という書き方も可能
   lineinfile:
     path: /etc/sudoers
     regexp: "%{{ admin_group }}" # "%グループ名" にマッチする行を line で指定した文字列で置換
     line: "%{{ admin_group }} ALL=(ALL) NOPASSWD: ALL"
 
 - name: 管理者ユーザ作成
-  # with_items: '配列' で配列を処理できる｜foreach item in 配列
-  ## ユーザ作成時に SSH鍵ペアも作成しておく
+  # ユーザ作成時に SSH鍵ペアも作成しておく
   user: name={{ item.name }} group={{ admin_group }} groups={{ admin_group }} uid={{ item.uid }} generate_ssh_key=yes
   with_items: '{{ admin_users }}'
 
