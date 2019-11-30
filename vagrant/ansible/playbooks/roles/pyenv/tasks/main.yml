@@ -17,6 +17,12 @@
 - name: pyenvのprofile作成
   template: src=../templates/pyenv.j2 dest=/etc/profile.d/pyenv.sh
 
+- name: pyenvで使用するpythonバージョンをインストール＆既定に設定
+  # bash をログインシェルとして起動してコマンドを実行させる
+  ## シェル起動時に /etc/profile.d/pyenv.sh を反映するため pyenvコマンドを使用可能にすることができる
+  ## pyenv install -s: skip if already installed
+  shell: /bin/bash -lc "pyenv install -s {{ python_version }} && pyenv global {{ python_version }}"
+
 - name: 管理者ユーザがsudoなしでpyenv実行できるように変更
   file:
     path: /usr/local/src/pyenv/
@@ -24,9 +30,3 @@
     group: '{{ admin_group }}'
     mode: 0775
     recurse: true
-
-- name: pyenvで使用するpythonバージョンをインストール＆既定に設定
-  # bash をログインシェルとして起動してコマンドを実行させる
-  ## シェル起動時に /etc/profile.d/pyenv.sh を反映するため pyenvコマンドを使用可能にすることができる
-  ## pyenv install -s: skip if already installed
-  shell: /bin/bash -lc "pyenv install -s {{ python_version }} && pyenv global {{ python_version }}"
