@@ -1,0 +1,5 @@
+---
+- hosts: web
+  become: true # root権限で実行
+  roles:
+    - docker # ./roles/docker/tasks/main.yml を実行

@@ -1,0 +1,24 @@
+---
+- name: Dockerインストール
+  yum:
+    name:
+      - docker
+      - epel-release
+    state: latest
+
+- name: Dockerサービスの起動＆スタートアップ登録
+  service: name=docker state=started enabled=true
+
+- name: docker-compose インストール
+  yum: name=docker-compose state=latest enablerepo=epel
+
+- name: dockerグループ追加
+  group: name=docker state=present
+
+- name: 管理者ユーザがsudoなしでDocker実行できるように変更
+  # admin_users のサブグループに dockerグループを登録する
+  user: name={{ item.name }} append=yes groups=docker
+  with_items: '{{ admin_users }}'
+
+- name: Dockerサービス再起動
+  service: name=docker state=restarted

@@ -1,3 +1,9 @@
 ---
 # 共通セキュリティ基本設定
 - import_playbook: playbooks/management.yml
+
+# Python環境整備
+- import_playbook: playbooks/pyenv.yml
+
+# Dockerインストール
+- import_playbook: playbooks/docker.yml

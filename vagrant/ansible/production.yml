@@ -8,3 +8,19 @@ management: # 共通セキュリティ設定グループ
       ansible_ssh_user: vagrant # SSH接続ユーザ名
       ansible_ssh_private_key_file: ../.vagrant/machines/default/virtualbox/private_key # SSH秘密鍵
       ansible_sudo_pass: vagrant # rootユーザパスワード
+pyenv: # Python環境整備グループ
+  hosts:
+    web:
+      ansible_host: 172.17.8.100
+      ansible_ssh_port: 22
+      ansible_ssh_user: vagrant
+      ansible_ssh_private_key_file: ../.vagrant/machines/default/virtualbox/private_key
+      ansible_sudo_pass: vagrant
+docker: # dockerインストールグループ
+  hosts:
+    web:
+      ansible_host: 172.17.8.100
+      ansible_ssh_port: 22
+      ansible_ssh_user: vagrant
+      ansible_ssh_private_key_file: ../.vagrant/machines/default/virtualbox/private_key
+      ansible_sudo_pass: vagrant

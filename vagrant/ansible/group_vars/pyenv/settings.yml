@@ -1,0 +1,4 @@
+---
+# pyenvで使用するpythonバージョン
+## 3.6 以上推奨（もしくは Aconda3 系）
+python_version: 3.6.7
