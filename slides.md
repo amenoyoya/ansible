@@ -22,7 +22,7 @@ marp: true
 
 ---
 
-![idempotency.png](./img/idempotency.png)
+![idempotency.png](https://github.com/amenoyoya/ansible/blob/master/img/idempotency.png?raw=true)
 
 べき等性を担保するためには以下の点を意識してスクリプトを書くことが望ましい
 
