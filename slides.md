@@ -1,50 +1,167 @@
+---
+marp: true
+---
+<!-- $theme: gaia -->
+<!-- $size: 4:3 -->
+<!-- page_number: true -->
+<!-- paginate: true -->
+# Ansible｜サーバ構築テンプレート作成
+
+## Ansibleによる構成管理
+
+---
+
+### べき等性
+べき等性とは、そのスクリプトを一回実行した結果と複数回実行した結果が変わらないことを示す
+
+関数で言うところの参照透過性、副作用のない関数とほぼ同等の意味合いと考えて良い
+
+構成管理においても、このべき等性が担保されていることが重要である
+
+同じスクリプトを実行して、違う環境が構成されてしまっては構成管理ツールの意味がなくなってしまうからである
+
+---
+
+![idempotency.png](./img/idempotency.png)
+
+べき等性を担保するためには以下の点を意識してスクリプトを書くことが望ましい
+
+- インストールするパッケージのバージョンを指定する
+- スクリプトが実行された環境の情報を取得し、差分を処理する
+
+---
+
+## Ansibleインストール
+Ansibleはローカルマシンにインストールする必要がある
+
+ここでは、Windows 10 環境と Ubuntu 18.04 環境におけるインストール方法を公開する
+
+---
+
+### Ansibleインストール on Windows 10
+ここでは、Windows Subsystem Linux（WSL）を使うことにする
+
+`Win + X` |> `A` => 管理者権限でPowerShell起動
+
+```powershell
+# Windows Subsystem Linux を有効化する
+> Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
+この操作を完了するために、今すぐコンピューターを再起動しますか?
+[Y] Yes  [N] No  [?] ヘルプ (既定値は "Y"): # そのままENTERして再起動
+
+# 再起動したら Ubuntu 18.04 ディストロパッケージをダウンロード
+## 「ダウンロード」ディレクトリに ubuntu1804.appx というファイル名でダウンロード
+> Invoke-WebRequest -Uri https://aka.ms/wsl-ubuntu-1804 -OutFile ~\Downloads\ubuntu1804.appx -UseBasicParsing
+
+# ダウンロードしたディストロパッケージをWSLに追加
+> Add-AppxPackage ~\Downloads\ubuntu1804.appx
+```
+
+---
+
+スタートメニューに「Ubuntu 18.04」が追加されるため、起動する
+
+```bash
+# 初回起動時は初期設定が必要
+Installing, this may take a few minutes...
+Please create a default UNIX user account. The username does not need to match your Windows username.
+For more information visit: https://aka.ms/wslusers
+Enter new UNIX username: # ログインユーザ名を設定
+Enter new UNIX password: # ログインパスワードを設定
+Retype new UNIX password: # パスワードをもう一度入力
+```
+
+以降は **Ansibleインストール on Ubuntu 18.04** の項を参照
+
+---
+
+### Ansibleインストール on Ubuntu 18.04
+```bash
+# Ansibleインストール用のリポジトリ追加
+$ sudo apt update && apt install software-properties-common
+$ sudo apt-add-repository --yes --update ppa:ansible/ansible
+
+# Ansibleインストール
+$ sudo apt install ansible
+
+# バージョン確認
+$ ansible --version
+ansible 2.9.1
+```
+
+---
+
 # サーバ構成のテンプレート化
 
-仕事では CentOS 6, 7系のVPSを使うことが多いため、ここでは CentOS 7 を基本としてテンプレートを作成している
+## CentOS 7 サーバ構築
+
+仕事では CentOS 6, 7系のVPSを使うことが多いため、ここでは CentOS 7 を基本としてテンプレートを作成していく
+
+なお、完成したPlaybookは https://github.com/amenoyoya/ansible/tree/master/vagrant/ansible に置いてある
+
+---
 
 ## 共通セキュリティ設定
 
-参考: [そこそこセキュアなlinuxサーバーを作る](https://qiita.com/cocuh/items/e7c305ccffb6841d109c)
+- 参考: [そこそこセキュアなlinuxサーバーを作る](https://qiita.com/cocuh/items/e7c305ccffb6841d109c)
 
 とりあえず行わなければならない基本的なセキュリティ設定は以下の通り
 
-1. **services**（サービス関連）
-    - **不要なサービスの停止**
-        - 使われていないサービスが動いていると、管理コストが高くなり、想定外の動作が起こる可能性もあるため極力停止する
-            - 参考: [Linuxで止めるべきサービスと止めないサービスの一覧](https://tech-mmmm.blogspot.com/2016/03/linux.html)
-    - **SELinux関連設定**
-        - CentOS 7 など、モダンなOSでは、SELinuxという、Linuxのカーネルに強制アクセス制御 (MAC) 機能を付加するモジュールが有効化されている  
-        - 管理が複雑化したり、想定外の動作が起きたりすることもあるため無効化することも多いが、セキュリティ的にはなるべく有効化しておきたい
-2. **sshd**（SSH接続関連）
-    - **ポート変更**
-        - SSHのデフォルト接続ポート25番は一般に知れ渡っており標的の対象となりやすいため、別のポートに変更する
-    - **rootログイン不可**
-        - rootはすべてのサーバにあるユーザであるため総当り攻撃される危険性がある
-        - root権限はサーバ内のあらゆる操作が可能であるため乗っ取られると非常に危険
-    - **パスワード認証不可**
-        - パスワード認証は総当り攻撃の対象になるため禁止する（公開鍵認証のみ許可とする）
-    - **SSH接続できないユーザの作成**
-        - Web制作をしていると、デザイナやコーダーなどがFTP（SFTP）でファイルアップロードしたいという要望がある
-        - そのような場合のために、SSH接続不可でSFTP接続のみ可能なユーザを作成しておくと便利
-            - 参考: [sshで接続したくないけどSFTPは使いたい時の設定](https://qiita.com/nisihunabasi/items/aa0cf18dbf8fd4320b2c)
-    - **sshdプロトコルの設定**
-        - sshdプロトコル1には脆弱性があるらしいので、2に設定する（最近のディストリビューションは最初から設定されているが念の為）
-    - **認証猶予時間と試行回数の制限**
-        - 制限をきつくすると締め出されてしまう危険性もあるが、緩めに制限しておくと多少安心
-3. **iptables**（ファイウォール関連）
-    - **外部公開ポートの制限**
-        - 外部に公開されているポートが多いと、それだけ攻撃を受けやすくなる
-        - そのため、最低限外部接続可能なポート（httpポート, httpsポート, ssl（sftp）ポートを想定）以外のポートを閉じておく
-            - 参考: [ファイアウォールiptablesを簡単解説](https://knowledge.sakura.ad.jp/4048/)
-    - **ポートスキャン対策**
-        - ポートスキャンとは、どのポートが開いているか外部から調査する攻撃手法
+1. services（サービス関連）
+2. sshd（SSH接続関連）
+3. iptables（Firewall関連）
 
-### ディレクトリ構成
+---
+### services（サービス関連）
+- **不要なサービスの停止**
+    - 使われていないサービスが動いていると、管理コストが高くなり、想定外の動作が起こる可能性もあるため極力停止する
+        - 参考: [Linuxで止めるべきサービスと止めないサービスの一覧](https://tech-mmmm.blogspot.com/2016/03/linux.html)
+- **SELinux関連設定**
+    - CentOS 7 など、モダンなOSでは、SELinuxという、Linuxのカーネルに強制アクセス制御 (MAC) 機能を付加するモジュールが有効化されている  
+    - 管理が複雑化したり、想定外の動作が起きたりすることもあるため無効化することも多いが、セキュリティ的にはなるべく有効化しておきたい
+
+---
+
+### sshd（SSH接続関連）その1
+- **ポート変更**
+    - SSHのデフォルト接続ポート25番は一般に知れ渡っており標的の対象となりやすいため、別のポートに変更する
+- **rootログイン不可**
+    - rootはすべてのサーバにあるユーザであるため総当り攻撃される危険性がある
+    - root権限はサーバ内のあらゆる操作が可能であるため乗っ取られると非常に危険
+- **パスワード認証不可**
+    - パスワード認証は総当り攻撃の対象になるため禁止する（公開鍵認証のみ許可とする）
+
+---
+
+### sshd（SSH接続関連）その2
+- **SSH接続できないユーザの作成**
+    - Web制作をしていると、デザイナやコーダーなどがFTP（SFTP）でファイルアップロードしたいという要望があるため、SSH接続不可でSFTP接続のみ可能なユーザを作成しておくと便利
+        - 参考: [sshで接続したくないけどSFTPは使いたい時の設定](https://qiita.com/nisihunabasi/items/aa0cf18dbf8fd4320b2c)
+- **sshdプロトコルの設定**
+    - sshdプロトコル1には脆弱性があるらしいので、2に設定する（最近のディストリビューションは最初から設定されているが念の為）
+- **認証猶予時間と試行回数の制限**
+    - 制限をきつくすると締め出されてしまう危険性もあるが、緩めに制限しておくと多少安心
+
+---
+
+### iptables（ファイウォール関連）
+- **外部公開ポートの制限**
+    - 外部に公開されているポートが多いと、それだけ攻撃を受けやすくなる
+    - そのため、最低限外部接続可能なポート（httpポート, httpsポート, ssl（sftp）ポート等）以外のポートを閉じておく
+        - 参考: [ファイアウォールiptablesを簡単解説](https://knowledge.sakura.ad.jp/4048/)
+- **ポートスキャン対策**
+    - ポートスキャンとは、どのポートが開いているか外部から調査する攻撃手法
+
+---
+
+## ディレクトリ構成
 ディレクトリ構成は、Ansibleのベストラクティスを参考にしつつ以下のような構成とした
 
-参考: [Best Practice - Ansible Documentation](https://docs.ansible.com/ansible/latest/user_guide/playbooks_best_practices.html)
+- 参考: [Best Practice - Ansible Documentation](https://docs.ansible.com/ansible/latest/user_guide/playbooks_best_practices.html)
 
 なお、共通セキュリティ設定関連は、**management**グループとしてまとめることとした
+
+---
 
 ```bash
 ./
@@ -77,6 +194,8 @@
         ## この部分の運用については考える必要があるかもしれない
 ```
 
+---
+
 運用方法にもよるが、基本的にグループ名とPlaybook名、Role名は統一したほうが分かりやすい
 
 今回の場合、以下の名前はすべて `management` で統一する
@@ -86,7 +205,9 @@
 - `playbooks`ディレクトリ配下の、実行Playbookファイル名
 - `playbooks/roles`ディレクトリ配下の、実行タスク格納ディレクトリ名（Role名）
 
-#### production.yml
+---
+
+### production.yml
 本番サーバ用のインベントリファイル
 
 今回は `production.yml` のみ作成しているが、本来はステージングサーバや開発用サーバも用意していることがほとんどなので、`staging.yml`, `development.yml` 等のインベントリファイルも必要になるはず
@@ -108,7 +229,9 @@ management: # 共通セキュリティ設定グループ
 
 yamlファイル先頭の `---` はなくても動くが、慣習的につけることが多いようなのでつけている
 
-#### group_vars/all.yml
+---
+
+### group_vars/all.yml
 全グループで共通して使用可能な変数を定義するためのファイル（このファイルはPlaybook実行時に自動的に読み込まれる）
 
 ここでは、サーバ（マシン）再起動の待ち時間のみ定義している
@@ -127,7 +250,9 @@ reboot_wait_timeout: 10
 
 なお、実際に再起動は起こらないが、マシン再起動を要する設定の反映は問題なく完了するため特に気にする必要はない
 
-#### main.yml
+---
+
+### main.yml
 Playbook実行時のエントリーファイル
 
 `playbooks`ディレクトリ内のRoleごとのPlaybookファイルをimportするだけ
@@ -138,7 +263,9 @@ Playbook実行時のエントリーファイル
 - import_playbook: playbooks/management.yml
 ```
 
-#### playbooks/management.yml
+---
+
+### playbooks/management.yml
 共通セキュリティ設定を定義するPlaybookファイル
 
 ```yaml
@@ -149,7 +276,9 @@ Playbook実行時のエントリーファイル
     - management # ./roles/management/tasks/main.yml を実行
 ```
 
-#### playbooks/roles/management/tasks/main.yml
+---
+
+### playbooks/roles/management/tasks/main.yml
 対応するrole名のPlaybookから呼び出される各種タスクを定義するファイル
 
 このファイルではタスクを直接記述せず、関連タスクを別ファイルに記述して include するようにした方が運用しやすい
@@ -172,12 +301,14 @@ Playbook実行時のエントリーファイル
 
 ---
 
-### SELinux関連設定
+## SELinux関連設定
 SELinuxを使用するか無効化するかは慎重に検討する必要がある
 
 CentOS 7 ではデフォルトで有効化されているため、極力有効化しておいた方が望ましいが、ここでは `use_selinux`フラグ変数で無効化もできるように設定する
 
-#### group_vars/management/settings.yml
+---
+
+### group_vars/management/settings.yml
 `group_vars/{グループ名}/`ディレクトリ配下の各設定ファイルは、グループのPlaybook実行時に自動的に読み込まれるため、分かりやすい名前をつけておくと良い
 
 ここでは、`settings.yml`というファイルで SELinux有効／無効のフラグ変数を定義している
@@ -190,14 +321,18 @@ CentOS 7 ではデフォルトで有効化されているため、極力有効�
 use_selinux: true
 ```
 
-#### group_vars/management/ports.yml
+---
+
+### group_vars/management/ports.yml
 ポート関連の設定変数を定義している
 
 本番運用の際は、SSH接続ポートをデフォルトの 22番ポートにしておくのは危険だが、設定を失敗するとサーバに対する設定が一切できなくなってしまうため、開発段階では 22番ポートも設定しておくと安全
 
 yamlでは、先頭に `-` をつけることで配列を表現することができるため、有効活用すると良い
 
-参考: [YAML Syntax - Ansible Documentation](https://docs.ansible.com/ansible/latest/reference_appendices/YAMLSyntax.html)
+- 参考: [YAML Syntax - Ansible Documentation](https://docs.ansible.com/ansible/latest/reference_appendices/YAMLSyntax.html)
+
+---
 
 ```yaml
 ---
@@ -219,19 +354,15 @@ accept_ports:
     protocol: 'tcp'
 ```
 
-#### playbooks/roles/management/tasks/selinux.yml
-SELinux関連の設定を行うタスクを定義している
+---
 
-Ansibleでは `when`項目を利用することで条件分岐を行うことができるため、有効活用すると良い
+### playbooks/roles/management/tasks/selinux.yml
+SELinux関連の設定を行うタスクを定義している
 
 ```yaml
 ---
 - name: AnsibleのSELinux関連モジュールを使うためのパッケージをインストール
   # yumモジュール｜name=<パッケージ名（リスト指定可）> state=<present|absent> ...
-  # モジュールは `module_name: param1=var1 ...`（1行表記）という書き方だけでなく
-  ## `module_name:
-  ##    param1: var1
-  ##    ... `（複数行表記）という書き方も可能
   yum:
     name:
       - libselinux-python
@@ -240,7 +371,6 @@ Ansibleでは `when`項目を利用することで条件分岐を行うことが
 
 - name: SELinux｜sshポート開放
   # seportモジュール｜ports=<ポート番号> proto=<tcp|udp> setype=<ポートのSELinuxタイプ> state=<present|absent> ...
-  ## setype｜sshポート: ssh_port_t, httpポート: http_port_t, メモリキャッシュポート: memcache_port_t, ...
   seport:
     # with_items: '配列' で配列を処理できる｜foreach item in 配列
     ## {{変数名}} で変数の展開が可能
@@ -252,21 +382,15 @@ Ansibleでは `when`項目を利用することで条件分岐を行うことが
   with_items: '{{ ssh_ports }}'
   when: use_selinux # SELinuxを使う場合
 
-- name: SELinux｜httpポート開放
-  seport:
-    ports: '{{ item.port }}'
-    setype: http_port_t
-    proto: '{{ item.protocol }}'
-    state: present
-    reload: yes # 設定反映のためにSELinux再起動
-  with_items: '{{ accept_ports }}'
-  when: use_selinux # SELinuxを使う場合
+# ... (略) ...
 
 - include: selinux_disabled.yml
   when: not use_selinux # SELinuxを使わない場合
 ```
 
-#### playbooks/roles/management/tasks/selinux_disabled.yml
+---
+
+### playbooks/roles/management/tasks/selinux_disabled.yml
 SELinuxを無効化し、サーバマシンを再起動するタスクが定義してある
 
 ```yaml
@@ -303,19 +427,24 @@ SELinuxを無効化し、サーバマシンを再起動するタスクが定義�
 
 ---
 
-### ユーザ管理と sshd, iptables 設定
+## ユーザ管理と sshd, iptables 設定
+
 続いて、運用に工夫が必要なユーザ管理と sshd, iptables の設定を行う
 
-参考: [Ansible Playbookでユーザ管理（登録・削除）をまるっとやる](https://tech.smartcamp.co.jp/entry/2019/05/10/215035?utm_source=feed)
+- 参考: [Ansible Playbookでユーザ管理（登録・削除）をまるっとやる](https://tech.smartcamp.co.jp/entry/2019/05/10/215035?utm_source=feed)
 
 sshd, iptables, SELinux はポート制御関連で相互に関わり合っている部分も多いため、なるべく一緒に管理したほうが良い
 
-#### group_vars/management/users.yml
+---
+
+### group_vars/management/users.yml
 ユーザの追加・削除をしたい場合は、この変数定義ファイルに設定を記述する
 
 SSH接続してサーバ内の各種操作が可能なユーザは `admin_users`, FTP（SFTP）接続してファイルの更新だけが可能なユーザは `users` に設定する
 
 各ユーザがサーバ接続するための鍵ファイルは `ssh`ディレクトリに生成される
+
+---
 
 ```yaml
 ---
@@ -340,25 +469,18 @@ admin_group: 'admin'
 user_group: 'developers'
 ```
 
-#### playbooks/roles/management/tasks/admin_users.yml
+---
+
+### playbooks/roles/management/tasks/admin_users.yml
 管理者ユーザ（SSH接続可・sudo権限あり）の追加・削除を行うタスクを定義している
 
 ```yaml
 ---
+# (一部のみ抜粋)
+
 - name: 管理者グループ作成
   # groupモジュール｜name=<グループ名> state=<present（作成）|absent（削除）>
   group: name={{ admin_group }} state=present
-
-- name: 管理者グループをsudoersに追加
-  lineinfile:
-    path: /etc/sudoers
-    regexp: "%{{ admin_group }}" # "%グループ名" にマッチする行を line で指定した文字列で置換
-    line: "%{{ admin_group }} ALL=(ALL) NOPASSWD: ALL"
-
-- name: 管理者ユーザ作成
-  # ユーザ作成時に SSH鍵ペアも作成しておく
-  user: name={{ item.name }} group={{ admin_group }} groups={{ admin_group }} uid={{ item.uid }} generate_ssh_key=yes
-  with_items: '{{ admin_users }}'
 
 - name: 実際に管理者グループに属するユーザのリストを取得
   shell: 'getent group {{ admin_group }} | cut -d: -f4 | tr "," "\n"'
@@ -372,30 +494,26 @@ user_group: 'developers'
   with_items: '{{ present_sudoers.stdout_lines | difference(admin_users | map(attribute="name") | list) }}'
   ignore_errors: yes # ユーザが削除済みの場合があるためエラーは無視
 
-- name: 管理者ユーザの公開鍵登録
-  copy:
-    src: '/home/{{ item.name }}/.ssh/id_rsa.pub'
-    dest: '/home/{{ item.name }}/.ssh/authorized_keys'
-    owner: '{{ item.name }}'
-    group: '{{ admin_group }}'
-    mode: 0600 # パーミッションは8進数で記述すること
-    remote_src: yes # リモートサーバ内でファイルコピー
-  with_items: '{{ admin_users }}'
-
 - name: 管理者ユーザの秘密鍵ダウンロード
   fetch: src=/home/{{ item.name }}/.ssh/id_rsa dest=../ssh/{{ item.name }}-id_rsa flat=yes
   with_items: '{{ admin_users }}'
 ```
 
-#### playbooks/roles/management/tasks/users.yml
+---
+
+### playbooks/roles/management/tasks/users.yml
 一般ユーザ（SFTP接続してファイルの更新のみ可）の追加・削除を行うタスクを定義している
 
 `admin_users.yml` と似たような内容のため省略
 
-#### playbooks/roles/management/tasks/services.yml
+---
+
+### playbooks/roles/management/tasks/services.yml
 sshd と iptables の設定タスクを定義するが、注意点として、CentOS 7 以降は iptables の代わりに firewalld がデフォルトのアクセス制御サービスとなっているため、iptables を使うように設定する
 
 今後は firewalld が主流になっていくと思われるが、現時点ではナレッジが十分に蓄積されていない
+
+---
 
 ```yaml
 ---
@@ -427,27 +545,17 @@ sshd と iptables の設定タスクを定義するが、注意点として、Ce
   service: name=iptables state=restarted enabled=true
 ```
 
-#### playbooks/roles/management/templates/sshd_config.j2
+---
+
+### playbooks/roles/management/templates/sshd_config.j2
 sshd設定ファイルの内容をJinja2テンプレートを用いて記述している
 
 Jinja2で使える表記法については、[公式リファレンス](https://jinja.palletsprojects.com/en/2.10.x/templates/)を参照
 
-```conf
+---
+
+```bash
 # （一部設定のみ抜粋）
-
-# sshd protocol
-Protocol 2
-
-# sshd port: 複数指定可
-{% for port in ssh_ports %}
-Port {{ port }}
-{% endfor %}
-
-# 認証試行時間: 30秒
-LoginGraceTime 30
-
-# 認証試行回数: 30回
-MaxAuthTries 30
 
 # rootログイン不可
 PermitRootLogin no
@@ -459,7 +567,6 @@ PubkeyAuthentication yes
 AuthorizedKeysFile	.ssh/authorized_keys
 
 # sftp で chroot させたい場合は internal-sftp を使う必要あり
-#Subsystem  sftp  /usr/libexec/openssh/sftp-server
 Subsystem  sftp  internal-sftp
 
 # sftpのみ許可するユーザグループの設定
@@ -470,12 +577,14 @@ Match Group {{ user_group }}
     ForceCommand internal-sftp
 ```
 
-#### playbooks/roles/management/templates/iptables.j2
+---
+
+### playbooks/roles/management/templates/iptables.j2
 iptables の設定をテンプレート化している（省略）
 
 ---
 
-### Playbook実行
+## Playbook実行
 設定できたら動作確認を行う
 
 ```bash
@@ -490,8 +599,11 @@ management  : ok=22  changed=18  unreachable=0  failed=0  skipped=6  rescued=0  
 # 作成された管理者ユーザでSSH接続確認
 $ chown 600 ssh/vagrant-admin-id_rsa
 $ ssh -i ssh/vagrant-admin-id_rsa vagrant-admin@172.17.8.100
+```
 
 ---
+
+```bash
 ## => 問題なく接続できたら、ポートの確認を行う
 
 # iptables の開放ポートを確認
@@ -505,8 +617,11 @@ $ ssh -i ssh/vagrant-admin-id_rsa vagrant-admin@172.17.8.100
 
 # SSH切断
 [vagrant-admin ~]$ exit
+```
+
 ---
 
+```bash
 # 一般ユーザでSSH接続試行
 $ chown 600 ssh/vagrant-user-id_rsa
 $ ssh -i ssh/vagrant-user-id_rsa vagrant-user@172.17.8.100
@@ -526,26 +641,8 @@ sftp> exit
 
 ---
 
-### 本Playbookの問題
+## 本Playbookの問題
+
 今回作成したPlaybookには問題が残っており、**SELinux関連の設定のべき等性が担保されていない**
 
 本来は、SELinuxが無効化されている場合に有効化する処理が必要になるため注意が必要である
-
-***
-
-## LAMP環境の構築
-
-ここからは、システム開発の環境やサーバ要件等により構成は変わってくるが、ここでは以下のようなLAMP環境の構築を行う
-
-- Apache: 2.4.41
-    - 2.4.41 より前のバージョンには以下のような脆弱性が報告されている
-        - クロスサイトスクリプティングの脆弱性（CVE-2019-10092）
-        - メモリ破壊の脆弱性（CVE-2019-10081）
-        - 潜在的なオープンリダイレクトの脆弱性（CVE-2019-10098）など
-- PHP: 7.3.12
-    - 執筆時点の最新推奨バージョン
-    - FPMで使う場合ではあるが、7.3.11 以下の 7.3系のPHPにはリモートコード実行に関する脆弱性（CVE-2019-11043）がある
-- MySQL: 5.7.28
-    - MySQL 8系についてはまだ十分な知見が得られていないため、5.7系を選択
-
-Read [lamp.md](./lamp.md).
