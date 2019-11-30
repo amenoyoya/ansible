@@ -45,14 +45,18 @@ Vagrantは `Vagrantfile` に仮想マシン設定を記述して `vagrant up` �
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+ssh_port = 22 # ssh接続ポート
+
 Vagrant.configure("2") do |config|
-  config.vm.box = "centos/7" # CentOS7 のBoxファイルを使う
+  config.vm.box = "centos/7"
   config.vbguest.auto_update = false # host-guest間の差分アップデートを無効化
 
-  # Create a private network, which allows host-only access to the machine using a specific IP.
-  ## ここで設定したIPアドレスを介して仮想マシンにSSH接続できる
-  ## 複数の仮想マシンを作成する場合は、ホスト部（100）を重複しない値に設定する（101〜）
+  # 仮想マシの private IPアドレス設定
   config.vm.network "private_network", ip: "172.17.8.100"
+
+  # ssh接続ポート設定
+  config.ssh.guest_port = ssh_port
+  config.vm.network "forwarded_port", guest: ssh_port, host: 22222, id: "ssh"
 end
 ```
 
