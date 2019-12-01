@@ -1,6 +1,12 @@
 ---
-- name: sftp専用ユーザのルートディレクトリ作成
-  file: path={{ chroot_dir }} state=directory owner=root group=root mode=0755
+- name: sftp専用ユーザのルートディレクトリ＋マウンティングポイント作成
+  file: path={{ chroot_dir }}/{{ sftp_editable_dir | basename }} state=directory owner=root group=root mode=0755
+
+- name: sftpで編集可能なディレクトリ作成
+  file: path={{ sftp_editable_dir }} state=directory owner=root group={{ user_group }} mode=0775
+
+- name: sftpで編集可能なディレクトリをマウント
+  shell: mount -B '{{ sftp_editable_dir }}' '{{ chroot_dir }}/{{ sftp_editable_dir | basename }}'
 
 - name: sshd設定
   # Jinja2テンプレートエンジンを利用してテンプレートファイルを展開してアップロード

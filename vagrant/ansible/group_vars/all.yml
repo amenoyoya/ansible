@@ -17,11 +17,15 @@ users:
 # ユーザグループ設定
 ## 基本的に編集しない
 admin_group: 'admin'
-user_group: 'developers'
+user_group: 'devel'
 
 # sftp専用ユーザのルートディレクトリ
 ## 指定ディレクトリより上位のディレクトリにはアクセスできなくなる
 chroot_dir: '/var/www'
+
+# sftpで編集可能にするディレクトリ
+## chroot_dir 直下にマウントされる
+sftp_editable_dir: '/var/devel/httpdocs'
 
 # ---
 
