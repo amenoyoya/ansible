@@ -1,4 +1,7 @@
 ---
+- name: sftp専用ユーザのルートディレクトリ作成
+  file: path={{ chroot_dir }} state=directory owner=root group=root mode=0755
+
 - name: sshd設定
   # Jinja2テンプレートエンジンを利用してテンプレートファイルを展開してアップロード
   # templateモジュール｜src=<テンプレートファイル> dest=<アップロード先ファイルパス> ...

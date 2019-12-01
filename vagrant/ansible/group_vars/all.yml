@@ -19,6 +19,10 @@ users:
 admin_group: 'admin'
 user_group: 'developers'
 
+# sftp専用ユーザのルートディレクトリ
+## 指定ディレクトリより上位のディレクトリにはアクセスできなくなる
+chroot_dir: '/var/www'
+
 # ---
 
 # サーバ再起動待ちのタイムアウト時間 [秒]

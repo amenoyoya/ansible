@@ -81,10 +81,13 @@ AcceptEnv LC_IDENTIFICATION LC_ALL LANGUAGE
 AcceptEnv XMODIFIERS
 
 # sftp で chroot させたい場合は internal-sftp を使う必要あり
+## ※ Match Group 内の ForceCommand で internal-sftp を指定しているため、全体のsftpを internal-sftp にする必要はあまりない
 #Subsystem  sftp  /usr/libexec/openssh/sftp-server
 Subsystem  sftp  internal-sftp
 
 # sftpのみ許可するユーザグループの設定
 Match Group {{ user_group }}
+    # ルートディレクトリ指定
+    ChrootDirectory {{ chroot_dir }}
     # ログインシェルに internal-sftp を強制
     ForceCommand internal-sftp
