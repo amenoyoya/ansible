@@ -1,0 +1,10 @@
+version: "3"
+
+services:
+  # ssh接続可能なcentos7コンテナ
+  centos:
+    build: .
+    privileged: true # root権限（systemctlを使うため）
+    ports:
+      - "22222:22" # port: 22222 => 22
+    command: /sbin/init
