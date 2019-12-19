@@ -1,0 +1,17 @@
+all:
+  hosts: # ホスト定義
+    docker: # docker host
+      ansible_host: centos # 接続先サーバのIPアドレス or ドメイン名
+      # vagrant host の SSH接続設定
+      ansible_ssh_port: 22 # SSHのデフォルト接続ポートは 22番
+      ansible_ssh_user: root # SSH接続ユーザ名
+      ansible_ssh_pass: root # SSH接続パスワード
+      ansible_sudo_pass: root # rootユーザパスワード
+    test: # test host
+      ansible_host: centos
+      # test host の SSH接続設定
+      ansible_ssh_port: 22
+      ansible_ssh_user: testuser # testuserで接続
+      # SSH秘密鍵
+      ansible_ssh_private_key_file: ~/.ssh/testuser-id_rsa
+      ansible_sudo_pass: root

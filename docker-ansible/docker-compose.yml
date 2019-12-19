@@ -10,15 +10,15 @@ services:
   ansible:
     build: .
     volumes:
-      - ./:/home
-      - ./ssh/:/root/.ssh/
+      # プロジェクトディレクトリ
+      - ./:/ansible
     entrypoint:
       - ansible
   # ansible-playbookコンテナ
   ansible-playbook:
     build: .
     volumes:
-      - ./:/home
-      - ./ssh/:/root/.ssh/
+      # プロジェクトディレクトリ
+      - ./:/ansible
     entrypoint:
       - ansible-playbook

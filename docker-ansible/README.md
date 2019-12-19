@@ -6,7 +6,6 @@
 
 ```bash
 docker-ansible/
- |_ ssh/ # SSH鍵や接続設定等を格納（docker://ansible:/root/.ssh/ にマウント）
  |_ Dockerfile # AlpineLinux + Ansible環境構築ファイル
  |_ docker-compose.yml # ansibleコンテナ: ansibleコマンドとして利用
                        # ansible-playbookコンテナ: ansible-playbookコマンドとして利用

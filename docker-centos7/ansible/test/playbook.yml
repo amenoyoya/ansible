@@ -1,4 +1,4 @@
-- hosts: vagrant # イベントリファイルに記述された vagrant ホスト（エイリアス）に対して実行
+- hosts: docker # イベントリファイルに記述された docker ホスト（エイリアス）に対して実行
   become: true # sudo権限で実行
   tasks: # 各タスク定義｜nameは任意項目だが、分かりやすい名前をつけておくと管理しやすい
     - name: add a new user
@@ -31,4 +31,4 @@
       # SSH鍵のダウンロード
       ## fetchモジュール｜src=<サーバ内のファイルパス> dest=<ローカルの保存先パス> flat=<no|yes>
       ### flat=noだと、srcで指定したパスをまるごと保存してしまうため、yesを指定してファイル名のみでファイルを保存するようにする
-      fetch: src=/home/testuser/.ssh/id_rsa dest=./ssh/testuser-id_rsa flat=yes
+      fetch: src=/home/testuser/.ssh/id_rsa dest=~/.ssh/testuser-id_rsa flat=yes

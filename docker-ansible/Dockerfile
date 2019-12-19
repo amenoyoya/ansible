@@ -1,6 +1,10 @@
 FROM alpine:latest
 
-RUN apk --update add --no-cache ansible py3-pip openssh && \
+RUN : '必要なパッケージのインストール' && \
+    apk --update add --no-cache ansible py3-pip openssh sshpass && \
     pip3 install --upgrade pip botocore boto3 && \
-    mkdir -p /root/.ssh
-WORKDIR /home
+    : '作業ディレクトリ作成' && \
+    mkdir /ansible
+
+# 作業ディレクトリ
+WORKDIR /ansible

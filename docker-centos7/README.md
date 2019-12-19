@@ -1,94 +1,59 @@
 # Ansibleによる構成管理
 
-## Vagrant仮想サーバ準備
+## Dockerコンテナ
 
-Vagarantとは、VirtualBox等のホスト型仮想環境の構築・設定を支援する自動化ツールである
-
-まずは、本物のサーバをいじる前に、VirtualBox＋Vagrantで作成した仮想サーバを用いてAnsibleの動作確認を行っていく
-
-### VirtualBox, Vagrantのインストール
-
-#### on Windows 10
-`Win + X` => `A` |> 管理者権限PowerShell
-
-```powershell
-# chocolatey で virtualbox, vagrant インストール
-## chocolatey を使っていない場合は、公式のインストーラを用いてインストールしても良い
-> choco install -y virtualbox
-> choco install -y vagrant
-
-# vagrantプラグイン インストール
-> vagrant plugin install vagrant-vbguest # VagrantのゲストOS-カーネル間のバージョン不一致解決用プラグイン
-> vagrant plugin install vagrant-winnfsd # WindowsのNTFSマウントで、LinuxのNFSマウントを可能にするプラグイン
-
-# シンボリックリンクを有効化
-> fsutil behavior set SymlinkEvaluation L2L:1 R2R:1 L2R:1 R2L:1
-```
-
-#### on Ubuntu 18.04
+### 構成
 ```bash
-# virtualbox. vagrant インストール
-$ sudo apt install -y virtualbox
-$ sudo apt install -y virtualbox-ext-pack
-$ sudo apt install -y vagrant
-
-# vagrantプラグイン インストール
-$ vagrant plugin install vagrant-vbguest # VagrantのゲストOS-カーネル間のバージョン不一致解決用プラグイン
+./
+|_ ansible/ # プロジェクトディレクトリ => docker://ansible:/ansible/ にマウントされる
+|   |_ centos7-basic/ # CentOS7サーバの基本的な構成を構築するansible-playbook
+|   |_ test/ # 動作確認用ansible-playbook
+|
+|_ docker/ # dockerコンテナビルド設定
+|   |_ ansible/ # ansibleコンテナビルド設定
+|   |    |_ Dockerfile
+|   |
+|   |_ centos/ # centosコンテナビルド設定
+|        |_ Dockerfile
+|_ docker-compose.yml # ansibleコンテナ: ansibleコマンド実行用環境
+                      # centosコンテナ: ansibleで構成管理する対象の動作確認用サーバ
 ```
 
-### CentOS7 仮想マシン構築
-Vagrantは `Vagrantfile` に仮想マシン設定を記述して `vagrant up` コマンドを叩くだけで仮想マシンを自動的に構築することができる
-
-ここでは CentOS7 仮想マシンを構築するため、`Vagrantfile`を以下のように記述する
-
-```ruby
-# -*- mode: ruby -*-
-# vi: set ft=ruby :
-
-ssh_port = 22 # ssh接続ポート
-
-Vagrant.configure("2") do |config|
-  config.vm.box = "centos/7"
-  config.vbguest.auto_update = false # host-guest間の差分アップデートを無効化
-
-  # 仮想マシの private IPアドレス設定
-  config.vm.network "private_network", ip: "172.17.8.100"
-
-  # ssh接続ポート設定
-  config.ssh.guest_port = ssh_port
-  config.vm.network "forwarded_port", guest: ssh_port, host: 22222, id: "ssh"
-end
+### 起動
+```bash
+$ docker-compose build
+$ docker-compose up -d
 ```
 
-記述したら、Vagrantfileのあるディレクトリで以下のコマンドを実行し仮想マシンを起動する
+***
+
+## ansibleコンテナからcentosコンテナにSSH接続してみる
+
+Ansibleを使う前に、SSH接続確認をしておく
 
 ```bash
-# Vagrantfile設定に従って仮想マシン起動
-## 初回起動時はBoxファイル（仮想OSのイメージファイル）ダウンロードに時間がかかる
-$ vagrant up
+# ansibleコンテナに入る
+$ docker-compose exec ansible ash
 
-# なお、仮想マシンを終了する場合は halt コマンドを実行する
-# $ vagrant halt
-```
+# --- in ansible container ---
+# centosコンテナにSSH接続
+$ ssh root@centos
 
-仮想マシンが起動したら、以下の設定で仮想マシンにSSH接続してみる
+## => known_hosts に登録するため `yes` と打つ
 
-- ユーザ名: `vagrant`
-- IPアドレス: `172.17.8.100` (Vagrantfileで設定したIPアドレス)
-- SSH秘密鍵: `.vagrant/machines/default/virtualbox/private_key`
-
-```bash
-# Vagrant仮想マシンにSSH接続
-$ ssh -i ./.vagrant/machines/default/virtualbox/private_key vagrant@172.17.8.100
-
----
-# 問題なく接続できたら、そのまま exit でOK
-[vagrant@localhost ~]$ exit
+# --- in centos container by ssh ---
+# 問題なく接続できたら exit
+% exit
+# --- /centos ---
 ```
 
 ***
 
 ## Ansibleを使ってみる
+
+※ パスワード認証によるSSH接続の場合、先に `ssh` コマンドで接続して known_hosts 登録しておかないとうまく動作しない
+
+※ 本稿の全ファイルは `./ansible/test/` ディレクトリ内にある
 
 ### インベントリファイルの作成
 Ansibleの接続先サーバ情報等を記述した設定ファイルを**インベントリファイル**と呼ぶ
@@ -102,25 +67,23 @@ Ansibleの接続先サーバ情報等を記述した設定ファイルを**イ�
 ```yaml
 all:
   hosts: # ホスト定義
-    vagrant: # vagrant host
-      ansible_host: 172.17.8.100 # 指定サーバのIPアドレス
-  vars:  # 変数定義
-    # SSH接続設定変数
-    ansible_ssh_port: 22 # SSH接続ポートは通常 22番
-    ansible_ssh_user: vagrant # SSH接続ユーザ名
-    ansible_ssh_private_key_file: ./.vagrant/machines/default/virtualbox/private_key # SSH秘密鍵
-    ansible_sudo_pass: vagrant # rootユーザパスワード
+    docker: # docker host
+      ansible_host: centos # 接続先サーバのIPアドレス or ドメイン名
+      # vagrant host の SSH接続設定
+      ansible_ssh_port: 22 # SSHのデフォルト接続ポートは 22番
+      ansible_ssh_user: root # SSH接続ユーザ名
+      ansible_sudo_pass: root # rootユーザパスワード
 ```
 
 意味としては以下のようになる
 
 - hosts設定:
-    - サーバIPアドレス `172.17.8.100` を `vagrant` というエイリアス名に設定
-- vars設定: ここではSSH接続情報を記述
+    - 接続先サーバドメイン名 `centos`（`centos`Dockerコンテナ） を `docker` というエイリアス名に設定
+- 各ホスト（エイリアス）ごとの設定: ここではSSH接続情報を記述
     - `ansible_ssh_port`: SSH接続ポート｜基本的に`22`を指定
     - `ansible_ssh_user`: SSH接続ユーザ
-    - `ansible_ssh_private_key_file`: SSH接続用秘密鍵のパス
-        - 鍵ファイルではなくパスワードで接続する場合は `ansible_ssh_pass` を指定する
+    - `ansible_ssh_pass`: SSH接続パスワード
+        - パスワードをファイルに記述するのはセキュリティ的に問題があるため、本来は公開鍵認証にしたほうが良い（後述）
     - `ansible_sudo_pass`: rootユーザパスワード｜rootユーザでSSH接続する場合は `ansible_ssh_pass` と同一になる
 
 ### 単一コマンドの実行
@@ -129,16 +92,18 @@ all:
 `servers.yml` があるディレクトリ内で以下のコマンドを実行
 
 ```bash
+# --- in ansible container ---
+
 # Ansibleでサーバ内に接続し hostname コマンドを実行
 ## ansible <エイリアス名>: エイリアス名に設定されたサーバに接続する
 ## -i <インベントリファイル>: インベントリファイルを指定
 ## -m <モジュール名>: Ansibleの実行モジュールを指定（ここでは command を指定）
 ## -a <引数>: Ansible実行モジュールの引数を指定
-### => 今回は command モジュールのため hostname コマンドを実行するという意味になる
-$ ansible vagrant -i servers.yml -m command -a "hostname" 
+### => 今回は command モジュールのため `hostname -i` コマンドを実行するという意味になる
+$ ansible docker -i servers.yml -m command -a "hostname -i" 
 
-## => localhost.localdomain
-### ここまでの設定が正しくできていれば上記のようなホスト名が返ってくるはず
+## => 172.21.0.2
+### ここまでの設定が正しくできていれば上記のようなIPアドレスが返ってくるはず
 ```
 
 ### Playbookによるサーバ構成自動化
@@ -149,7 +114,7 @@ AnsibleにはPlaybookという、サーバ構成・状態を定義し、自動�
 Playbookファイルもyaml形式で記述し、ファイル名は任意だが、ここでは `playbook.yml` として以下のように記述する
 
 ```yaml
-- hosts: vagrant # イベントリファイルに記述された vagrant ホスト（エイリアス）に対して実行
+- hosts: docker # イベントリファイルに記述された docker ホスト（エイリアス）に対して実行
   become: true # sudo権限で実行
   tasks: # 各タスク定義｜nameは任意項目だが、分かりやすい名前をつけておくと管理しやすい
     - name: add a new user
@@ -182,7 +147,7 @@ Playbookファイルもyaml形式で記述し、ファイル名は任意だが�
       # SSH鍵のダウンロード
       ## fetchモジュール｜src=<サーバ内のファイルパス> dest=<ローカルの保存先パス> flat=<no|yes>
       ### flat=noだと、srcで指定したパスをまるごと保存してしまうため、yesを指定してファイル名のみでファイルを保存するようにする
-      fetch: src=/home/testuser/.ssh/id_rsa dest=./ssh/testuser-id_rsa flat=yes
+      fetch: src=/home/testuser/.ssh/id_rsa dest=~/.ssh/testuser-id_rsa flat=yes
 ```
 
 各タスクの内容は、コメントの通りである
@@ -190,13 +155,15 @@ Playbookファイルもyaml形式で記述し、ファイル名は任意だが�
 playbook.yml が作成できたら、以下のコマンドでPlaybookを実行
 
 ```bash
+# --- in ansible container ---
+
 # ansible-playbook -i <インベントリファイル> <Playbookファイル>
 $ ansible-playbook -i servers.yml playbook.yml
     :
-vagrant  : ok=6  changed=6  unreachable=0  failed=0  skipped=0  rescued=0  ignored=0
+docker  : ok=6  changed=6  unreachable=0  failed=0  skipped=0  rescued=0  ignored=0
 ```
 
-実行すると、`testuser`ユーザが作成され、そのユーザでログインするためのSSH秘密鍵を `./ssh/testuser-id_rsa` に保存することができるはず
+実行すると、`testuser`ユーザが作成され、そのユーザでログインするためのSSH秘密鍵が `./ssh/testuser-id_rsa` に保存されるはず
 
 なお、もう一度Playbookを実行すると `changed=0` となり、最終的なサーバ構成・状態は同一になることが担保されている（**べき等性**）
 
@@ -205,7 +172,7 @@ vagrant  : ok=6  changed=6  unreachable=0  failed=0  skipped=0  rescued=0  ignor
 $ ansible-playbook -i servers.yml playbook.yml
     :
 ## => changed=0 となり、現在のサーバの状態に合わせて何の変更も加えなかったことが分かる
-vagrant  : ok=6  changed=0  unreachable=0  failed=0  skipped=0  rescued=0  ignored=0
+docker  : ok=6  changed=0  unreachable=0  failed=0  skipped=0  rescued=0  ignored=0
 ```
 
 ### 複数のSSH接続ユーザ設定
@@ -214,39 +181,44 @@ vagrant  : ok=6  changed=0  unreachable=0  failed=0  skipped=0  rescued=0  ignor
 まずは普通に `ssh`コマンドで接続してみる
 
 ```bash
+# --- in ansible container ---
+
 # Ansibleにより生成＆ダウンロードされたSSH秘密鍵のパーミッションを変更
-$ chmod 600 ./ssh/testuser-id_rsa
+$ chmod 600 ~/.ssh/testuser-id_rsa
 
-# testuserユーザでSSH接続
-$ ssh -i ./ssh/testuser-id_rsa testuser@172.17.8.100
+# testuserユーザで centosコンテナにSSH接続
+## known_hosts に登録せずにSSH接続確認したい場合は
+## $ ssh -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no -i ./ssh/testuser-id_rsa testuser@centos
+$ ssh -i ~/.ssh/testuser-id_rsa testuser@centos
 
----
+# --- in centos container by ssh ---
 # SSH接続できることを確認したらそのまま exit
 [testuser ~]$ exit
 ```
 
 続いてインベントリファイル `servers.yml` に `testuser`ユーザでのSSH接続設定を追加する
 
+公開鍵で認証する場合は、`ansible_ssh_private_key_file` 設定で鍵ファイルを指定する
+
 ```yaml
 all:
   hosts: # ホスト定義
-    vagrant: # vagrant host
-      ansible_host: 172.17.8.100 # 指定サーバのIPアドレス
+    docker: # docker host
+      ansible_host: centos # 接続先サーバのIPアドレス or ドメイン名
       # vagrant host の SSH接続設定
-      ansible_ssh_port: 22 # SSH接続ポートは通常 22番
-      ansible_ssh_user: vagrant # SSH接続ユーザ名
-      ansible_ssh_private_key_file: ./.vagrant/machines/default/virtualbox/private_key # SSH秘密鍵
-      ansible_sudo_pass: vagrant # rootユーザパスワード
+      ansible_ssh_port: 22 # SSHのデフォルト接続ポートは 22番
+      ansible_ssh_user: root # SSH接続ユーザ名
+      ansible_ssh_pass: root # SSH接続パスワード
+      ansible_sudo_pass: root # rootユーザパスワード
     test: # test host
-      ansible_host: 172.17.8.100
+      ansible_host: centos
       # test host の SSH接続設定
       ansible_ssh_port: 22
       ansible_ssh_user: testuser # testuserで接続
-      ansible_ssh_private_key_file: ./ssh/testuser-id_rsa
-      ansible_sudo_pass: vagrant
+      # SSH秘密鍵
+      ansible_ssh_private_key_file: ~/.ssh/testuser-id_rsa
+      ansible_sudo_pass: root
 ```
-
-上記のように、ホストエイリアスごとに `ansible_***` の設定を記述することができるため、SSH接続設定もそのような記述方法に変更している
 
 `testuser`ユーザで接続するための `test`ホストの設定を用いてAnsibleコマンドを実行してみる
 
@@ -262,23 +234,3 @@ $ ansible test -i servers.yml -m command -a "whoami"
 基本的な使い方は以上である
 
 その他、Ansibleで使用できるモジュールなどは[公式ページ](https://docs.ansible.com/ansible/latest/modules/modules_by_category.html)を参照すると良い
-
-***
-
-## 仮想マシンの初期化
-
-サーバの設定を色々していると、設定を間違えてSSH接続できなくなったりなどのトラブルが起こり得る
-
-そのような場合は、Vagrant仮想マシンを一度破壊して再構築してしまうのが早い
-
-```bash
-# vagrant仮想マシンの破壊
-$ vagrant destroy -y
-
-# vagrant仮想マシンの構築＆起動
-$ vagrant up
-
-# 再構築するとSSH鍵の設定が変更されるため、登録済みの鍵情報を削除する必要がある
-## Windows環境では ssh-keygen が使えないため、直接 ~/.ssh/known_hosts を編集する
-$ ssh-keygen -f ~/.ssh/known_hosts -R "172.17.8.100"
-```
