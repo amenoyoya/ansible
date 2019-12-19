@@ -2,7 +2,22 @@
 
 ## Dockerを使ったインストール方法
 
+```bash
+# GitHubからDockerCompose構成ファイルダウンロード
+$ wget -O - https://github.com/amenoyoya/ansible/releases/download/0.1.0/docker-ansible.tar.gz | tar xzvf -
 
+# プロジェクトディレクトリに移動
+$ cd docker-ansible
+
+# docker-compose run でコンテナ実行（--rm: 実行完了したらコンテナ削除）
+# ※ 初回起動時のみイメージのPull＆Buildに時間かかる
+
+## 例: ansible バージョン確認
+$ docker-compose run --rm ansible --version
+
+## 例: ansible-playbook 実行
+$ docker-compose run --rm ansible-playbook -i inventoryfile playbookfile.yml
+```
 
 ***
 

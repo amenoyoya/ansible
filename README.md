@@ -25,8 +25,8 @@ Read [ansible-installation.md](./ansible-installation.md).
 
 ---
 
-### Vagrant仮想サーバを用いたAnsible動作確認
-Read [vagrant/README.md](./vagrant/README.md).
+### Docker仮想サーバを用いたAnsible動作確認
+Read [docker-centos7/README.md](./docker-centos7/README.md).
 
 ***
 
@@ -34,7 +34,7 @@ Read [vagrant/README.md](./vagrant/README.md).
 
 Ansibleを用いて、割とよく使うサーバ構成をテンプレート化する
 
-Read [server/README.md](./server/README.md).
+Read [docker-centos7/centos7-basic.md](./docker-centos7/centos7-basic.md).
 
 ***
 
