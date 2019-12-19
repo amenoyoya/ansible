@@ -4,12 +4,12 @@
 
 # 管理者ユーザ: sshログイン & sudo権限あり
 admin_users:
-  - name: 'vagrant-admin'
+  - name: 'centos-admin'
     uid: 1001 # 重複しないユーザIDを指定すること
 
 # 一般ユーザ: sftp接続のみ可
 users:
-  - name: 'vagrant-user'
+  - name: 'centos-user'
     uid: 2001
 
 # ---
@@ -31,5 +31,6 @@ sftp_editable_dir: '/var/devel/httpdocs'
 
 # サーバ再起動待ちのタイムアウト時間 [秒]
 ## Vagrant環境だと実際には reboot が起こらないため、短めのタイムアウト時間を指定した方が良い
+## Docker環境の場合は手動でDockerコンテナを再起動する必要があるため、基本的に再起動が必要な操作は行わないようにする
 ## 通常のサーバであれば、それなりに長いタイムアウト時間を指定する必要がある
 reboot_wait_timeout: 10

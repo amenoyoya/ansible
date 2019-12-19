@@ -34,390 +34,34 @@ marp: true
 ## Ansibleインストール
 Ansibleはローカルマシンにインストールする必要がある
 
-ここでは、Windows 10 環境と Ubuntu 18.04 環境におけるインストール方法を紹介する
-
----
-
-### Ansibleインストール on Windows 10
-ここでは、Windows Subsystem Linux（WSL）を使うことにする
-
-`Win + X` |> `A` => 管理者権限でPowerShell起動
-
-```powershell
-# Windows Subsystem Linux を有効化する
-> Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
-この操作を完了するために、今すぐコンピューターを再起動しますか?
-[Y] Yes  [N] No  [?] ヘルプ (既定値は "Y"): # そのままENTERして再起動
-
-# 再起動したら Ubuntu 18.04 ディストロパッケージをダウンロード
-## 「ダウンロード」ディレクトリに ubuntu1804.appx というファイル名でダウンロード
-> Invoke-WebRequest -Uri https://aka.ms/wsl-ubuntu-1804 -OutFile ~\Downloads\ubuntu1804.appx -UseBasicParsing
-
-# ダウンロードしたディストロパッケージをWSLに追加
-> Add-AppxPackage ~\Downloads\ubuntu1804.appx
-```
-
----
-
-スタートメニューに「Ubuntu 18.04」が追加されるため、起動する
+Dockerですぐに使える環境を作成したため、ここではそれを利用する
 
 ```bash
-# 初回起動時は初期設定が必要
-Installing, this may take a few minutes...
-Please create a default UNIX user account. The username does not need to match your Windows username.
-For more information visit: https://aka.ms/wslusers
-Enter new UNIX username: # ログインユーザ名を設定
-Enter new UNIX password: # ログインパスワードを設定
-Retype new UNIX password: # パスワードをもう一度入力
-```
+# GitHubからDockerCompose構成ファイルダウンロード
+$ wget -O - https://github.com/amenoyoya/ansible/releases/download/0.1.0/docker-ansible.tar.gz | tar xzvf -
 
-以降は **Ansibleインストール on Ubuntu 18.04** の項を参照
+# プロジェクトディレクトリに移動
+$ cd docker-ansible
 
----
+# docker-compose run でコンテナ実行（--rm: 実行完了したらコンテナ削除）
+# ※ 初回起動時のみイメージのPull＆Buildに時間かかる
 
-### Ansibleインストール on Ubuntu 18.04
-```bash
-# Ansibleインストール用のリポジトリ追加
-$ sudo apt update && apt install software-properties-common
-$ sudo apt-add-repository --yes --update ppa:ansible/ansible
+## 例: ansible バージョン確認
+$ docker-compose run --rm ansible --version
 
-# Ansibleインストール
-$ sudo apt install ansible
-
-# バージョン確認
-$ ansible --version
-ansible 2.9.1
+## 例: ansible-playbook 実行
+$ docker-compose run --rm ansible-playbook -i inventoryfile playbookfile.yml
 ```
 
 ---
 
-# AnsibleによるVagrant仮想サーバ構成管理
+# AnsibleによるCentOS7仮想サーバ構成管理
 
----
+## Ansibleを使ってみる
 
-## Vagrant仮想サーバ
+GitHubにAnsible学習用のプログラムを準備したため、そちらを参照
 
-Vagarantとは、VirtualBox等のホスト型仮想環境の構築・設定を支援する自動化ツールである
-
-まずは、本物のサーバをいじる前に、VirtualBox＋Vagrantで作成した仮想サーバを用いてAnsibleの動作確認を行っていく
-
----
-
-## VirtualBox, Vagrantのインストール
-仮想マシンバックエンドに VirtualBox を採用し、VirtualBox + Vagrant 環境を準備する
-
-ここでは、Windows 10 環境と Ubuntu 18.04 環境におけるインストール方法を紹介する
-
----
-
-### on Windows 10
-`Win + X` => `A` |> 管理者権限PowerShell
-
-```powershell
-# chocolatey で virtualbox, vagrant インストール
-## chocolatey を使っていない場合は、公式のインストーラを用いてインストールしても良い
-> choco install -y virtualbox
-> choco install -y vagrant
-
-# vagrantプラグイン インストール
-> vagrant plugin install vagrant-vbguest # VagrantのゲストOS-カーネル間のバージョン不一致解決用プラグイン
-> vagrant plugin install vagrant-winnfsd # WindowsのNTFSマウントで、LinuxのNFSマウントを可能にするプラグイン
-
-# シンボリックリンクを有効化
-> fsutil behavior set SymlinkEvaluation L2L:1 R2R:1 L2R:1 R2L:1
-```
-
----
-
-### on Ubuntu 18.04
-```bash
-# virtualbox. vagrant インストール
-$ sudo apt install -y virtualbox
-$ sudo apt install -y virtualbox-ext-pack
-$ sudo apt install -y vagrant
-
-# vagrantプラグイン インストール
-$ vagrant plugin install vagrant-vbguest # VagrantのゲストOS-カーネル間のバージョン不一致解決用プラグイン
-```
-
----
-
-## CentOS7 仮想マシン構築
-
-Vagrantは `Vagrantfile` に仮想マシン設定を記述して `vagrant up` コマンドを叩くだけで仮想マシンを自動的に構築することができる
-
-ここでは CentOS7 仮想マシンを構築するため、`Vagrantfile`を以下のように記述する
-
----
-
-```ruby
-# -*- mode: ruby -*-
-# vi: set ft=ruby :
-
-ssh_port = 22 # ssh接続ポート
-
-Vagrant.configure("2") do |config|
-  config.vm.box = "centos/7"
-  config.vbguest.auto_update = false # host-guest間の差分アップデートを無効化
-
-  # 仮想マシの private IPアドレス設定
-  config.vm.network "private_network", ip: "172.17.8.100"
-
-  # ssh接続ポート設定
-  config.ssh.guest_port = ssh_port
-  config.vm.network "forwarded_port", guest: ssh_port, host: 22222, id: "ssh"
-end
-```
-
----
-
-記述したら、Vagrantfileのあるディレクトリで以下のコマンドを実行し仮想マシンを起動する
-
-```bash
-# Vagrantfile設定に従って仮想マシン起動
-## 初回起動時はBoxファイル（仮想OSのイメージファイル）ダウンロードに時間がかかる
-$ vagrant up
-
-# なお、仮想マシンを終了する場合は halt コマンドを実行する
-# $ vagrant halt
-```
-
----
-
-仮想マシンが起動したら、以下の設定で仮想マシンにSSH接続してみる
-
-- ユーザ名: `vagrant`
-- IPアドレス: `172.17.8.100` (Vagrantfileで設定したIPアドレス)
-- SSH秘密鍵: `.vagrant/machines/default/virtualbox/private_key`
-
-```bash
-# Vagrant仮想マシンにSSH接続
-$ ssh -i ./.vagrant/machines/default/virtualbox/private_key vagrant@172.17.8.100
-
----
-# 問題なく接続できたら、そのまま exit でOK
-[vagrant@localhost ~]$ exit
-```
-
----
-
-# Ansibleを使ってみる
-
-## インベントリファイルの作成
-Ansibleの接続先サーバ情報等を記述した設定ファイルを**インベントリファイル**と呼ぶ
-
-インベントリファイル名は任意だが、ここでは `servers.yml` というファイル名にする
-
-なお、インベントリファイルの形式としては**ini形式**と**yaml形式**があるが、ここではyaml形式を採用する
-
-`servers.yml` にサーバ情報を以下の通り記述する（yaml形式ではインデントにも意味があるため、インデント幅に注意すること）
-
----
-
-```yaml
-all:
-  hosts: # ホスト定義
-    vagrant: # vagrant host
-      ansible_host: 172.17.8.100 # 指定サーバのIPアドレス
-  vars:  # 変数定義
-    # SSH接続設定変数
-    ansible_ssh_port: 22 # SSH接続ポートは通常 22番
-    ansible_ssh_user: vagrant # SSH接続ユーザ名
-    ansible_ssh_private_key_file: ./.vagrant/machines/default/virtualbox/private_key # SSH秘密鍵
-    ansible_sudo_pass: vagrant # rootユーザパスワード
-```
-
----
-
-意味としては以下のようになる
-
-- hosts設定:
-    - サーバIPアドレス `172.17.8.100` を `vagrant` というエイリアス名に設定
-- vars設定: ここではSSH接続情報を記述
-    - `ansible_ssh_port`: SSH接続ポート｜基本的に`22`を指定
-    - `ansible_ssh_user`: SSH接続ユーザ
-    - `ansible_ssh_private_key_file`: SSH接続用秘密鍵のパス
-        - 鍵ファイルではなくパスワードで接続する場合は `ansible_ssh_pass` を指定する
-    - `ansible_sudo_pass`: rootユーザパスワード｜rootユーザでSSH接続する場合は `ansible_ssh_pass` と同一になる
-
----
-
-## 単一コマンドの実行
-
-インベントリファイルを作成したら、Ansibleでサーバ内のコマンドを実行させてみる
-
-`servers.yml` があるディレクトリ内で以下のコマンドを実行
-
-```bash
-# Ansibleでサーバ内に接続し hostname コマンドを実行
-## ansible <エイリアス名>: エイリアス名に設定されたサーバに接続する
-## -i <インベントリファイル>: インベントリファイルを指定
-## -m <モジュール名>: Ansibleの実行モジュールを指定（ここでは command を指定）
-## -a <引数>: Ansible実行モジュールの引数を指定
-### => 今回は command モジュールのため hostname コマンドを実行するという意味になる
-$ ansible vagrant -i servers.yml -m command -a "hostname" 
-
-## => localhost.localdomain
-### ここまでの設定が正しくできていれば上記のようなホスト名が返ってくるはず
-```
-
----
-
-## Playbookによるサーバ構成自動化
-
-AnsibleにはPlaybookという、サーバ構成・状態を定義し、自動的に構成を行うことのできる仕組みがある
-
-ここでは、サーバにユーザを新規作成し、SSH鍵を使ってSSH接続できるように構成する
-
-Playbookファイルもyaml形式で記述し、ファイル名は任意だが、ここでは `playbook.yml` として以下のように記述する（各タスクの内容は、コメントの通りである）
-
----
-
-```yaml
-- hosts: vagrant # イベントリファイルに記述された vagrant ホスト（エイリアス）に対して実行
-  become: true # sudo権限で実行
-  tasks: # 各タスク定義｜nameは任意項目だが、分かりやすい名前をつけておくと管理しやすい
-    - name: add a new user
-      # Linuxユーザの作成
-      ## userモジュール｜name=<ユーザ名> state=<present|absent> uid=<ユーザID>
-      ### present: 存在する状態（存在しない場合は作成）, absent: 存在しない状態（存在する場合は削除）
-      ### uidは指定しなくとも良いが、複数サーバでユーザIDを統一するためには指定しておく必要がある
-      user: name=testuser state=present uid=1001
-
-    - name: mkdir .ssh
-      # .sshフォルダの作成
-      ## fileモジュール｜path=<ファイルパス> state=<file|directory|...> owner=<所有者> group=<所有グループ> mode=<パーミッション>
-      ### パーミッションは8進数で指定しなければならないため 0700 や '700' などのように指定すること
-      file: path=/home/testuser/.ssh/ state=directory owner=testuser group=testuser mode=0700
-
-    - name: generate ssh key
-      # SSH鍵ペアの生成
-      ## userモジュール｜generate_ssh_key=yes: SSH鍵ペアを生成
-      ### => /home/testuser/.ssh/ に id_rsa（秘密鍵）, id_rsa.pub（公開鍵）生成
-      user: name=testuser generate_ssh_key=yes
-    
-    - name: ssh key authentication
-      # 公開鍵をSSH認証鍵として登録
-      ## copyモジュール｜src=<コピー元パス> dest=<コピー先パス> remote_src=<no|yes>
-      ### remote_src=yes にするとリモートホスト内でファイルコピーを実行（remote_src=no ならアップロード処理に近い挙動）
-      ### /home/testuser/.ssh/id_rsa.pub => authorized_keys に変更
-      copy: src=/home/testuser/.ssh/id_rsa.pub dest=/home/testuser/.ssh/authorized_keys owner=testuser group=testuser mode=0600 remote_src=yes
-
-    - name: download ssh-key
-      # SSH鍵のダウンロード
-      ## fetchモジュール｜src=<サーバ内のファイルパス> dest=<ローカルの保存先パス> flat=<no|yes>
-      ### flat=noだと、srcで指定したパスをまるごと保存してしまうため、yesを指定してファイル名のみでファイルを保存するようにする
-      fetch: src=/home/testuser/.ssh/id_rsa dest=./ssh/testuser-id_rsa flat=yes
-```
-
----
-
-playbook.yml が作成できたら、以下のコマンドでPlaybookを実行
-
-```bash
-# ansible-playbook -i <インベントリファイル> <Playbookファイル>
-$ ansible-playbook -i servers.yml playbook.yml
-    :
-vagrant  : ok=6  changed=6  unreachable=0  failed=0  skipped=0  rescued=0  ignored=0
-```
-
-実行すると、`testuser`ユーザが作成され、そのユーザでログインするためのSSH秘密鍵を `./ssh/testuser-id_rsa` に保存することができるはず
-
----
-
-なお、もう一度Playbookを実行すると `changed=0` となり、最終的なサーバ構成・状態は同一になることが担保されている（**べき等性**）
-
-```bash
-# もう一度Playbookを実行した場合
-$ ansible-playbook -i servers.yml playbook.yml
-    :
-## => changed=0 となり、現在のサーバの状態に合わせて何の変更も加えなかったことが分かる
-vagrant  : ok=6  changed=0  unreachable=0  failed=0  skipped=0  rescued=0  ignored=0
-```
-
----
-
-## 複数のSSH接続ユーザ設定
-
-ここまで設定すると `testuser` ユーザでもSSH接続できるようになる
-
-まずは普通に `ssh`コマンドで接続してみる
-
-```bash
-# Ansibleにより生成＆ダウンロードされたSSH秘密鍵のパーミッションを変更
-$ chmod 600 ./ssh/testuser-id_rsa
-
-# testuserユーザでSSH接続
-$ ssh -i ./ssh/testuser-id_rsa testuser@172.17.8.100
-
----
-# SSH接続できることを確認したらそのまま exit
-[testuser ~]$ exit
-```
-
----
-
-続いてインベントリファイル `servers.yml` に `testuser`ユーザでのSSH接続設定を追加する（ホストエイリアスごとに `ansible_***` の設定を記述することができるため、SSH接続設定もそのような記述方法に変更している）
-
-```yaml
-all:
-  hosts: # ホスト定義
-    vagrant: # vagrant host
-      ansible_host: 172.17.8.100 # 指定サーバのIPアドレス
-      # vagrant host の SSH接続設定
-      ansible_ssh_port: 22 # SSH接続ポートは通常 22番
-      ansible_ssh_user: vagrant # SSH接続ユーザ名
-      ansible_ssh_private_key_file: ./.vagrant/machines/default/virtualbox/private_key # SSH秘密鍵
-      ansible_sudo_pass: vagrant # rootユーザパスワード
-    test: # test host
-      ansible_host: 172.17.8.100
-      # test host の SSH接続設定
-      ansible_ssh_port: 22
-      ansible_ssh_user: testuser # testuserで接続
-      ansible_ssh_private_key_file: ./ssh/testuser-id_rsa
-      ansible_sudo_pass: vagrant
-```
-
----
-
-`testuser`ユーザで接続するための `test`ホストの設定を用いてAnsibleコマンドを実行してみる
-
-```bash
-# ansible command by `test` host
-## whoami コマンドをサーバ内で実行
-$ ansible test -i servers.yml -m command -a "whoami"
-
-## => testuser
-### ログインユーザ名が返ってきたら成功
-```
-
-基本的な使い方は以上である
-
-その他、Ansibleで使用できるモジュールなどは[公式ページ](https://docs.ansible.com/ansible/latest/modules/modules_by_category.html)を参照すると良い
-
----
-
-# おまけ
-
-## 仮想マシンの初期化
-
-サーバの設定を色々していると、設定を間違えてSSH接続できなくなったりなどのトラブルが起こり得る
-
-そのような場合は、Vagrant仮想マシンを一度破壊して再構築してしまうのが早い
-
----
-
-```bash
-# vagrant仮想マシンの破壊
-$ vagrant destroy -y
-
-# vagrant仮想マシンの構築＆起動
-$ vagrant up
-
-# 再構築するとSSH鍵の設定が変更されるため、登録済みの鍵情報を削除する必要がある
-## Windows環境では ssh-keygen が使えないため、直接 ~/.ssh/known_hosts を編集する
-$ ssh-keygen -f ~/.ssh/known_hosts -R "172.17.8.100"
-```
+https://github.com/amenoyoya/ansible/tree/master/docker-centos7
 
 ---
 
@@ -427,7 +71,7 @@ $ ssh-keygen -f ~/.ssh/known_hosts -R "172.17.8.100"
 
 仕事では CentOS 6, 7系のVPSを使うことが多いため、ここでは CentOS 7 を基本としてテンプレートを作成していく
 
-なお、完成したPlaybookは https://github.com/amenoyoya/ansible/tree/master/vagrant/ansible に置いてある
+なお、完成したPlaybookは https://github.com/amenoyoya/ansible/tree/master/docker-centos7/ansible/centos7-basic に置いてある
 
 ---
 
@@ -443,12 +87,13 @@ $ ssh-keygen -f ~/.ssh/known_hosts -R "172.17.8.100"
 
 ---
 ### services（サービス関連）
-- **不要なサービスの停止**
-    - 使われていないサービスが動いていると、管理コストが高くなり、想定外の動作が起こる可能性もあるため極力停止する
-        - 参考: [Linuxで止めるべきサービスと止めないサービスの一覧](https://tech-mmmm.blogspot.com/2016/03/linux.html)
 - **SELinux関連設定**
     - CentOS 7 など、モダンなOSでは、SELinuxという、Linuxのカーネルに強制アクセス制御 (MAC) 機能を付加するモジュールが有効化されている  
     - 管理が複雑化したり、想定外の動作が起きたりすることもあるため無効化することも多いが、セキュリティ的にはなるべく有効化しておきたい
+    - ここでは、SSH接続ポート変更のためのポリシーの設定のみ行う
+- **pyenv導入**
+    - CentOS7 のデフォルトのPythonは2系で、日本語環境との親和性が非常に悪い
+    - そのため、複数バージョンのPython環境を管理できる pyenv を導入し、3系Pythonをインストールしておきたい
 
 ---
 
@@ -500,25 +145,20 @@ $ ssh-keygen -f ~/.ssh/known_hosts -R "172.17.8.100"
 |_ group_vars/ # 変数定義ファイル格納ディレクトリ
 |   |_ all.yml # 全グループ共通の変数定義ファイル
 |   |_ management/ # 共通セキュリティ設定関連の変数定義ファイルの格納ディレクトリ
-|       |_ settings.yml # 共通セキュリティ設定の変数定義ファイル
-|       |_ ports.yml # ポート設定関連の変数定義ファイル
-|       |_ users.yml # ユーザ管理はこのファイルで行う想定
+|   |   |_ settings.yml # 共通セキュリティ設定の変数定義ファイル
+|   |   |_ ports.yml # ポート設定関連の変数定義ファイル
+|   |   |_ users.yml # ユーザ管理はこのファイルで行う想定
+|   |
+|   |_ pyenv/ # Python環境整備関連の変数定義ファイルの格納ディレクトリ
 |
 |_ playbooks/ # 実際にサーバに対する操作を行うファイルを格納するディレクトリ｜インフラ管理者以外は触らない想定
 |   |_ management.yml # 共通セキュリティ設定を行うPlaybook｜roles/management/tasks/main.yml のタスクを実行
 |   |_ roles/ # Playbookで実行されるタスクを役割ごとに格納するディレクトリ
 |       |_ management/ # このディレクトリ名（role）は親Playbookの名前と揃える
-|           |_ tasks/  # 共通セキュリティ設定で実行するタスクを格納するディレクトリ
-|           |   |_ main.yml # 共通セキュリティ設定で実行されるメインタスク定義ファイル
-|           |   |_ admin_users.yml # 管理者ユーザ関連のタスク定義ファイル（main.yml から include される）
-|           |   |_ users.yml # 一般ユーザ関連のタスク定義ファイル（main.yml から include される）
-|           |   |_ services.yml # sshd, iptables関連のタスク定義ファイル（main.yml から include される）
-|           |   |_ selinux.yml # SELinux関連のタスク定義ファイル（main.yml から include される）
-|           |   |_ selinux_disabled.yml # SELinux無効化のタスク定義ファイル（selinux.yml から include される）
-|           |
-|           |_ templates/ # Jinja2テンプレートファイル格納ディレクトリ
-|               |_ sshd_config.j2 # /etc/ssh/sshd_config に展開される設定テンプレートファイル
-|               |_ iptables.j2 # /etc/sysconfig/iptables に展開される設定テンプレートファイル
+|       |   |_ tasks/  # 共通セキュリティ設定で実行するタスクを格納するディレクトリ
+|       |   |_ templates/ # Jinja2テンプレートファイル格納ディレクトリ
+|       |
+|       |_ pyenv/ # Python環境整備タスク格納ディレクトリ
 |
 |_ ssh/ # ユーザごとの秘密鍵を格納するディレクトリ
         ## この部分の運用については考える必要があるかもしれない
@@ -528,7 +168,7 @@ $ ssh-keygen -f ~/.ssh/known_hosts -R "172.17.8.100"
 
 運用方法にもよるが、基本的にグループ名とPlaybook名、Role名は統一したほうが分かりやすい
 
-今回の場合、以下の名前はすべて `management` で統一する
+今回の場合、以下の名前はすべて `management` や `pyenv` で統一する
 
 - インベントリファイルに記述するグループ名
 - `group_vars`ディレクトリ配下の、グループ内変数ファイル格納ディレクトリ名
@@ -552,9 +192,9 @@ management: # 共通セキュリティ設定グループ
     web: # ホスト名は基本的に web で統一する
       ansible_host: 172.17.8.100 # 指定サーバのIPアドレス
       ansible_ssh_port: 22 # SSH接続ポートは通常 22番
-      ansible_ssh_user: vagrant # SSH接続ユーザ名
-      ansible_ssh_private_key_file: ../.vagrant/machines/default/virtualbox/private_key # SSH秘密鍵
-      ansible_sudo_pass: vagrant # rootユーザパスワード
+      ansible_ssh_user: root # SSH接続ユーザ名
+      ansible_ssh_private_key_file: ~/.ssh/private_key # SSH秘密鍵
+      ansible_sudo_pass: XXX # rootユーザパスワード
 ```
 
 yamlファイル先頭の `---` はなくても動くが、慣習的につけることが多いようなのでつけている
@@ -569,16 +209,9 @@ yamlファイル先頭の `---` はなくても動くが、慣習的につける
 ```yaml
 ---
 # サーバ再起動待ちのタイムアウト時間 [秒]
-## Vagrant環境だと実際には reboot が起こらないため、短めのタイムアウト時間を指定した方が良い
-## 通常のサーバであれば、それなりに長いタイムアウト時間を指定する必要がある
-reboot_wait_timeout: 10
+## それなりに長い時間を指定する
+reboot_wait_timeout: 300
 ```
-
-なお、ここでは動作確認にVagrant仮想マシンを使用しているため、reboot コマンドで実際にマシンが再起動することはない
-
-そのため、いつまで待っても再起動が成功することはなく、タイムアウト時間を長めに設定しても意味がない
-
-なお、実際に再起動は起こらないが、マシン再起動を要する設定の反映は問題なく完了するため特に気にする必要はない
 
 ---
 
@@ -589,6 +222,10 @@ Playbook実行時のエントリーファイル
 
 ```yaml
 ---
+# Python環境整備タスク
+## 個人的にPythonの環境整備は最初にやっておきたい
+- import_playbook: playbooks/pyenv.yml
+
 # 共通セキュリティ基本設定
 - import_playbook: playbooks/management.yml
 ```
@@ -634,22 +271,7 @@ Playbook実行時のエントリーファイル
 ## SELinux関連設定
 SELinuxを使用するか無効化するかは慎重に検討する必要がある
 
-CentOS 7 ではデフォルトで有効化されているため、極力有効化しておいた方が望ましいが、ここでは `use_selinux`フラグ変数で無効化もできるように設定する
-
----
-
-### group_vars/management/settings.yml
-`group_vars/{グループ名}/`ディレクトリ配下の各設定ファイルは、グループのPlaybook実行時に自動的に読み込まれるため、分かりやすい名前をつけておくと良い
-
-ここでは、`settings.yml`というファイルで SELinux有効／無効のフラグ変数を定義している
-
-```yaml
----
-# SELinuxを使うかどうか
-## SELinuxがデフォルトで無効になっているOSの場合、true を指定しても有効化したりはしない
-## ※必要があれば修正する
-use_selinux: true
-```
+CentOS 7 ではデフォルトで有効化されているため、ここでは有効化されたままの運用を想定している
 
 ---
 
@@ -710,49 +332,6 @@ SELinux関連の設定を行うタスクを定義している
     state: present
     reload: yes # 設定反映のためにSELinux再起動
   with_items: '{{ ssh_ports }}'
-  when: use_selinux # SELinuxを使う場合
-
-# ... (略) ...
-
-- include: selinux_disabled.yml
-  when: not use_selinux # SELinuxを使わない場合
-```
-
----
-
-### playbooks/roles/management/tasks/selinux_disabled.yml
-SELinuxを無効化し、サーバマシンを再起動するタスクが定義してある
-
-```yaml
----
-# SELinuxが有効化されていると SSHポートの変更等が面倒、という場合は無効化してしまうのも手（セキュリティリスクは慎重に検討すること）
-## 参考: http://redj.hatenablog.com/entry/2018/04/22/135933
-
-- name: SELinuxの無効化
-  selinux: state=disabled
-  register: selinux # => selinuxモジュールの実行結果を selinux 変数に代入
-
-- name: マシンのリブート
-  shell: "sleep 2 && reboot"
-  async: 1 # シェルを同期的に実行
-  poll: 0
-  when: selinux.reboot_required # selinuxが再起動を要求した場合に実行
-
-- name: マシンの停止を待ち合わせ
-  # local_actionモジュール｜Ansible実行マシンに対してコマンドを実行
-  ## inventory_hostname: 現在Playbookが実行中のインベントリホスト名が入っている
-  ## インベントリホストに対して状態を問い合わせ、状態が stopped になるまで待つ 
-  local_action: wait_for host={{ inventory_hostname }} port={{ ansible_ssh_port }} state=stopped
-  when: selinux.reboot_required # selinuxが再起動を要求した場合に実行
-  become: false # local_actionを使う場合は become=false にしておかないと rootパスワード周りでエラーが起こる
-
-- name: マシンの起動を待ち合わせ
-  # インベントリホスト(ssh port: 22)に対して状態を問い合わせ、状態が started になるまで待つ
-  ## reboot_wait_timeout で指定された秒数が経過したら強制的に次のタスクへ移行
-  local_action: wait_for host={{ inventory_hostname }} port={{ ansible_ssh_port }} state=started timeout={{ reboot_wait_timeout }}
-  when: selinux.reboot_required # selinuxが再起動を要求した場合に実行
-  become: false
-  ignore_errors: true # vagrant環境だといつまで経ってもこのタスクは終わらないため、タイムアウトしたらそのまま無視する
 ```
 
 ---
@@ -783,12 +362,12 @@ SSH接続してサーバ内の各種操作が可能なユーザは `admin_users`
 
 # 管理者ユーザ: sshログイン & sudo権限あり
 admin_users:
-  - name: 'vagrant-admin'
+  - name: 'centos-admin'
     uid: 1001 # 重複しないユーザIDを指定すること
 
 # 一般ユーザ: sftp接続のみ可
 users:
-  - name: 'vagrant-user'
+  - name: 'centos-user'
     uid: 2001
 
 # ---
@@ -909,11 +488,6 @@ Match Group {{ user_group }}
 
 ---
 
-### playbooks/roles/management/templates/iptables.j2
-iptables の設定をテンプレート化している（省略）
-
----
-
 ## Playbook実行
 設定できたら動作確認を行う
 
@@ -924,11 +498,12 @@ $ ansible-playbook -i production.yml main.yml
 management  : ok=22  changed=18  unreachable=0  failed=0  skipped=6  rescued=0  ignored=0
 
 ## => SELinuxを使う想定で設定しているため、SELinux無効化関連タスクはskipされる
-## => ssh/vagrant-admin-id_rsa, vagrant-user-id_rsa が保存されるはず
+## => ssh/centos-admin-id_rsa, centos-user-id_rsa が保存されるはず
 
 # 作成された管理者ユーザでSSH接続確認
-$ chown 600 ssh/vagrant-admin-id_rsa
-$ ssh -i ssh/vagrant-admin-id_rsa vagrant-admin@172.17.8.100
+$ cp ssh/centos-admin-id_rsa ~/.ssh/centos-admin-id_rsa
+$ chmod 600 ~/.ssh/centos-admin-id_rsa
+$ ssh -i ~/.ssh/centos-admin-id_rsa centos-admin@172.17.8.100
 ```
 
 ---
@@ -937,30 +512,31 @@ $ ssh -i ssh/vagrant-admin-id_rsa vagrant-admin@172.17.8.100
 ## => 問題なく接続できたら、ポートの確認を行う
 
 # iptables の開放ポートを確認
-[vagrant-admin ~]$ sudo iptables -nL
+[centos-admin ~]$ sudo iptables -nL
 
 # SELinuxを有効化している場合: SELinuxのポリシーを確認
 ## 普通に semanage を実行すると UnicodeEncodingError が起こるため PYTHONIOENCODING環境変数を設定しながら実行する
-[vagrant-admin ~]$ sudo PYTHONIOENCODING=utf-8 python /usr/sbin/semanage port -l
+[centos-admin ~]$ sudo PYTHONIOENCODING=utf-8 python /usr/sbin/semanage port -l
 
 ## => iptables, SELinux の開放ポート（特にSSHポート）が想定通り設定されていればOK
 
 # SSH切断
-[vagrant-admin ~]$ exit
+[centos-admin ~]$ exit
 ```
 
 ---
 
 ```bash
 # 一般ユーザでSSH接続試行
-$ chown 600 ssh/vagrant-user-id_rsa
-$ ssh -i ssh/vagrant-user-id_rsa vagrant-user@172.17.8.100
+$ cp ssh/centos-user-id_rsa ~/.ssh/centos-user-id_rsa
+$ chmod 600 ~/.ssh/centos-user-id_rsa
+$ ssh -i ~/.ssh/centos-user-id_rsa centos-user@172.17.8.100
 
 ## => This service allows sftp connections only.
 ### 上記のようなエラーが出て接続を拒否されればOK
 
 # 一般ユーザでSFTP接続確認
-$ sftp -i ssh/vagrant-user-id_rsa vagrant-user@172.17.8.100
+$ sftp -i ssh/centos-user-id_rsa centos-user@172.17.8.100
 
 ---
 ## => 問題なく接続できたらOK
@@ -968,11 +544,3 @@ sftp> exit
 ```
 
 なお、ここでは、全部の設定を行ってから動作確認をしているが、本来はもう少し細かい単位の設定ごとに動作確認をしていくほうが安全である
-
----
-
-## 本Playbookの問題
-
-今回作成したPlaybookには問題が残っており、**SELinux関連の設定のべき等性が担保されていない**
-
-本来は、SELinuxが無効化されている場合に有効化する処理が必要になるため注意が必要である

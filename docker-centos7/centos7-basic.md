@@ -101,9 +101,9 @@ management: # 共通セキュリティ設定グループ
     web: # ホスト名は基本的に web で統一する
       ansible_host: 172.17.8.100 # 指定サーバのIPアドレス
       ansible_ssh_port: 22 # SSH接続ポートは通常 22番
-      ansible_ssh_user: vagrant # SSH接続ユーザ名
-      ansible_ssh_private_key_file: ../.vagrant/machines/default/virtualbox/private_key # SSH秘密鍵
-      ansible_sudo_pass: vagrant # rootユーザパスワード
+      ansible_ssh_user: root # SSH接続ユーザ名
+      ansible_ssh_private_key_file: ~/.ssh/private_key # SSH秘密鍵
+      ansible_sudo_pass: XXX # rootユーザパスワード
 ```
 
 yamlファイル先頭の `---` はなくても動くが、慣習的につけることが多いようなのでつけている
@@ -117,15 +117,10 @@ yamlファイル先頭の `---` はなくても動くが、慣習的につける
 ---
 # サーバ再起動待ちのタイムアウト時間 [秒]
 ## Vagrant環境だと実際には reboot が起こらないため、短めのタイムアウト時間を指定した方が良い
+## Docker環境の場合は手動でDockerコンテナを再起動する必要があるため、基本的に再起動が必要な操作は行わないようにする
 ## 通常のサーバであれば、それなりに長いタイムアウト時間を指定する必要がある
 reboot_wait_timeout: 10
 ```
-
-なお、ここでは動作確認にVagrant仮想マシンを使用しているため、reboot コマンドで実際にマシンが再起動することはない
-
-そのため、いつまで待っても再起動が成功することはなく、タイムアウト時間を長めに設定しても意味がない
-
-なお、実際に再起動は起こらないが、マシン再起動を要する設定の反映は問題なく完了するため特に気にする必要はない
 
 #### main.yml
 Playbook実行時のエントリーファイル
@@ -324,12 +319,12 @@ SSH接続してサーバ内の各種操作が可能なユーザは `admin_users`
 
 # 管理者ユーザ: sshログイン & sudo権限あり
 admin_users:
-  - name: 'vagrant-admin'
+  - name: 'centos-admin'
     uid: 1001 # 重複しないユーザIDを指定すること
 
 # 一般ユーザ: sftp接続のみ可
 users:
-  - name: 'vagrant-user'
+  - name: 'centos-user'
     uid: 2001
 
 # ---
@@ -485,37 +480,37 @@ $ ansible-playbook -i production.yml main.yml
 management  : ok=22  changed=18  unreachable=0  failed=0  skipped=6  rescued=0  ignored=0
 
 ## => SELinuxを使う想定で設定しているため、SELinux無効化関連タスクはskipされる
-## => ssh/vagrant-admin-id_rsa, vagrant-user-id_rsa が保存されるはず
+## => ssh/centos-admin-id_rsa, centos-user-id_rsa が保存されるはず
 
 # 作成された管理者ユーザでSSH接続確認
-$ chown 600 ssh/vagrant-admin-id_rsa
-$ ssh -i ssh/vagrant-admin-id_rsa vagrant-admin@172.17.8.100
+$ chown 600 ssh/centos-admin-id_rsa
+$ ssh -i ssh/centos-admin-id_rsa centos-admin@172.17.8.100
 
 ---
 ## => 問題なく接続できたら、ポートの確認を行う
 
 # iptables の開放ポートを確認
-[vagrant-admin ~]$ sudo iptables -nL
+[centos-admin ~]$ sudo iptables -nL
 
 # SELinuxを有効化している場合: SELinuxのポリシーを確認
 ## 普通に semanage を実行すると UnicodeEncodingError が起こるため PYTHONIOENCODING環境変数を設定しながら実行する
-[vagrant-admin ~]$ sudo PYTHONIOENCODING=utf-8 python /usr/sbin/semanage port -l
+[centos-admin ~]$ sudo PYTHONIOENCODING=utf-8 python /usr/sbin/semanage port -l
 
 ## => iptables, SELinux の開放ポート（特にSSHポート）が想定通り設定されていればOK
 
 # SSH切断
-[vagrant-admin ~]$ exit
+[centos-admin ~]$ exit
 ---
 
 # 一般ユーザでSSH接続試行
-$ chown 600 ssh/vagrant-user-id_rsa
-$ ssh -i ssh/vagrant-user-id_rsa vagrant-user@172.17.8.100
+$ chown 600 ssh/centos-user-id_rsa
+$ ssh -i ssh/centos-user-id_rsa centos-user@172.17.8.100
 
 ## => This service allows sftp connections only.
 ### 上記のようなエラーが出て接続を拒否されればOK
 
 # 一般ユーザでSFTP接続確認
-$ sftp -i ssh/vagrant-user-id_rsa vagrant-user@172.17.8.100
+$ sftp -i ssh/centos-user-id_rsa centos-user@172.17.8.100
 
 ---
 ## => 問題なく接続できたらOK
