@@ -1,0 +1,24 @@
+version: "3"
+
+# 各コンテナはコマンドとして利用することを想定
+## ansible version確認
+## $ docker-compose run --rm ansible --version
+## ansible-playbook実行
+## $ docker-compose run --rm ansible-palybook -i inventoryfile playbookfile.yml 
+services:
+  # ansibleコンテナ
+  ansible:
+    build: .
+    volumes:
+      - ./:/home
+      - ./ssh/:/root/.ssh/
+    entrypoint:
+      - ansible
+  # ansible-playbookコンテナ
+  ansible-playbook:
+    build: .
+    volumes:
+      - ./:/home
+      - ./ssh/:/root/.ssh/
+    entrypoint:
+      - ansible-playbook
