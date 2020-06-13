@@ -1,0 +1,12 @@
+version: "3"
+
+# CentOS7 コンテナで ansible 動作確認するDockerCompose
+
+services:
+  # ssh接続可能なcentosコンテナ
+  centos:
+    build: ./centos
+    ports:
+      - "8022:22" # host から docker://centos に ssh接続するためのポート
+    privileged: true # root権限（systemctlを使うため）
+    command: /sbin/init

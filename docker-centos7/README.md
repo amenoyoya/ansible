@@ -21,7 +21,7 @@
 
 ### 起動
 ```bash
-$ docker-compose build
+$ export UID && docker-compose build
 $ docker-compose up -d
 ```
 
@@ -33,13 +33,14 @@ Ansibleを使う前に、SSH接続確認をしておく
 
 ```bash
 # ansibleコンテナに入る
-$ docker-compose exec ansible ash
+$ export UID && docker-compose exec ansible ash
 
 # --- in ansible container ---
 # centosコンテナにSSH接続
 $ ssh root@centos
 
 ## => known_hosts に登録するため `yes` と打つ
+## password: `root` と打つ
 
 # --- in centos container by ssh ---
 # 問題なく接続できたら exit
