@@ -1,0 +1,22 @@
+---
+# ssh-keygen で鍵ペア作成
+# $ ansible-playbook -e '[keyfile=<keyfile>] [option=<option>]' ssh.keygen/main.yml
+## keyfile: 生成する鍵ファイル名（パス）を指定（default: id_rsa）
+## option: ssh-keygen のオプション引数を指定（default: -t rsa -b 4096）
+## --ask-pass: SSH接続にパスワードを要求される場合に指定
+
+- hosts: localhost
+  connection: local # local で実行する
+  # default vars: -e オプションで上書き可能
+  vars:
+    # 鍵ファイル名
+    keyfile: id_rsa
+    # ssh-keygen オプション
+    ## 鍵暗号化強度について: https://qiita.com/aqmr-kino/items/8c3306ea8022b0d5cbe4
+    ## -t rsa: 暗号形式をRSAにする
+    ## -b 4096: 鍵長を 4096 bit にする (RSA-4096 は AES 128bit相当以上のセキュリティレベルを満たす)
+    ### かつては 1024bit鍵が多かったが2010年末を境に 2048bit 以上が推奨されるようになった（暗号アルゴリズムの2010年問題）
+    option: -t rsa -b 4096
+  tasks:
+    - name: ssh-keygen
+      shell: ssh-keygen {{ option }} -f {{ keyfile }}

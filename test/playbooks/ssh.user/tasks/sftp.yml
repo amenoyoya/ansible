@@ -1,0 +1,40 @@
+---
+# SSH接続: SFTPユーザ作成
+
+- name: SFTPユーザ作成
+  # 別ユーザでSSH接続した後 sudo su でスイッチすることは可能なように、シェルは /bin/bash にしておく
+  user: name={{ target }} state=present create_home=yes shell=/bin/bash
+- name: 公開鍵登録
+  authorized_key:
+    user: '{{ target }}'
+    key: '{{ lookup("file", pubkey) }}'
+  when: pubkey != ''
+- name: Chroot用ディレクトリ作成
+  file:
+    path: /var/{{ target }}/root/
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when: chroot != ''
+- name: Chrootバインディング
+  shell: mount -B {{ chroot }} /var/{{ target }}/root
+  when: chroot != ''
+- name: Chrootバインディング永続化
+  lineinfile:
+    path: /etc/fstab
+    backrefs: yes
+    regexp: ^{{ chroot }}
+    line: '{{ chroot }} /var/{{ target }}/root none bind 0 0'
+  when: chroot != ''
+- name: SFTP強制設定
+  blockinfile:
+    path: /etc/ssh/sshd_config
+    # ansible は marker を目印に複数行の挿入・更新・削除を行う
+    marker: '# {mark} ANSIBLE MANAGED BLOCK {{ target }}'
+    block: |
+      Match User {{ target }}
+        ForceCommand    internal-sftp
+        {% if chroot != '' %}ChrootDirectory /var/{{ target }}/{% endif %}
+- name: sshd再起動
+  systemd: name=sshd state=restarted

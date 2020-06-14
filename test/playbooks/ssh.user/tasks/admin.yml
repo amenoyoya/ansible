@@ -1,0 +1,17 @@
+---
+# SSH接続: 管理者ユーザ作成
+
+- name: 管理者ユーザ作成
+  user: name={{ target }} state=present create_home=yes shell=/bin/bash
+- name: sudoers登録
+  lineinfile:
+    path: /etc/sudoers
+    create: yes # ファイルが存在しない場合は作成
+    state: present
+    regexp: '^{{ target }}\s+'
+    line: '{{ target }} ALL=(ALL) NOPASSWD: ALL'
+- name: 公開鍵登録
+  authorized_key:
+    user: '{{ target }}'
+    key: '{{ lookup("file", pubkey) }}'
+  when: pubkey != ''

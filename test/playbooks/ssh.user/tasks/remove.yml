@@ -1,0 +1,41 @@
+---
+# SSH接続: ユーザ削除
+
+# chrootディレクトリの存在を判定しておく
+- stat: path=/var/{{ target }}/root
+  register: stat
+- name: ユーザ削除
+  # remove: yes でホームディレクトリ等も削除
+  user: name={{ target }} state=absent remove=yes
+- name: sudoers登録解除
+  lineinfile:
+    path: /etc/sudoers
+    state: absent
+    regexp: ^{{ target }}\s+
+- name: Chrootバインディング解除
+  shell: umount /var/{{ target }}/root
+  when: stat.stat.exists
+- name: Chrootバインディング永続化解除
+  lineinfile:
+    path: /etc/fstab
+    state: absent
+    backrefs: yes
+    regexp: /var/{{ target }}/root none bind 0 0$
+  when: stat.stat.exists
+- name: Chrootディレクトリ削除
+  file:
+    path: /var/{{ target }}/
+    state: absent
+  when: stat.stat.exists
+- name: SFTP強制設定解除
+  blockinfile:
+    path: /etc/ssh/sshd_config
+    # ansible は marker を目印に複数行の挿入・更新・削除を行う
+    marker: '# {mark} ANSIBLE MANAGED BLOCK {{ target }}'
+    state: absent
+  # blockinfile の実行結果を保存
+  register: result
+- name: sshd再起動
+  systemd: name=sshd state=restarted
+  # blockinfile で sshd_config の内容が変わっていれば再起動
+  when: result.diff[0].before != ''

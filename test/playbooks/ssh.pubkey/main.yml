@@ -1,0 +1,29 @@
+---
+# SSH接続: 公開鍵認証を有効化／無効化
+# $ ansible-playbook -e 'hosts=<hosts> [mode=<mode>]' [-u <user>] [--ask-pass] ssh.pubkey/main.yml
+## hosts: 操作対象のホスト名（ホスト名はインベントリファイル /etc/ansible/hosts に定義しておく）
+## user: 対象サーバにSSH接続するユーザ名（インベントリファイル [ホスト名:vars] で ansible_ssh_user を定義していればそれを使う）
+## mode: on(default) => 公開鍵認証を有効化, off => 公開鍵認証を無効化
+## --ask-pass: SSH接続にパスワードを要求される場合に指定
+
+- hosts: '{{ hosts }}'
+  # 必須入力変数: -e オプションで指定されなかった場合対話的に入力を要求
+  vars_prompt:
+    - name: hosts
+      prompt: 'hosts (Target hosts)'
+      confirm: no
+      private: no
+      default: localhost
+  # default vars: -e オプションで上書き可能
+  vars:
+    mode: 'on'
+  tasks:
+  # vars.mode: on(default) => 公開鍵認証を有効化
+  - include: tasks/on.yml
+    become: true # root権限で実行
+    when: mode == 'on'
+
+  # vars.mode: off => 公開鍵認証を無効化
+  - include: tasks/off.yml
+    become: true # root権限で実行
+    when: mode == 'off'

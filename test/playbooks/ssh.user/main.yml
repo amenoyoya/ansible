@@ -1,0 +1,51 @@
+---
+# SSH接続: ユーザ作成／削除
+# $ ansible-playbook -e 'hosts=<hosts> [target=<taget>] [mode=<mode>] [chroot=<chroot>] [pubkey=<pubkey>]' [-u <user>] [--ask-pass] ssh.user/main.yml
+## hosts: 操作対象のホスト名（ホスト名はインベントリファイル /etc/ansible/hosts に定義しておく）
+## user: 対象サーバにSSH接続するユーザ名（インベントリファイル [ホスト名:vars] で ansible_ssh_user を定義していればそれを使う）
+## target: 作成／削除するユーザ名
+## mode: admin => 管理者ユーザ作成, sftp => sudo 不可、sftp 接続のみ有効なユーザ作成, remove => ユーザ削除
+## chroot: chrootディレクトリを設定する場合指定（mode: sftp の時のみ有効）
+## pubkey: 公開鍵を登録する場合、ローカルにある鍵ファイルパスを指定
+## --ask-pass: SSH接続にパスワードを要求される場合に指定
+
+- hosts: '{{ hosts }}'
+  # 必須入力変数: -e オプションで指定されなかった場合対話的に入力を要求
+  vars_prompt:
+    - name: hosts
+      prompt: 'hosts (Target hosts)'
+      confirm: no
+      private: no
+      default: localhost
+    - name: target
+      prompt: 'target (Target user)'
+      confirm: no
+      private: no
+    - name: mode
+      prompt: 'mode (admin|sftp|remove)'
+      confirm: no
+      private: no
+      default: admin
+  # default vars: -e オプションで上書き可能
+  vars:
+    # sftp で chroot を強制する場合はパスを指定（mode: sftp のみ有効）
+    chroot: ''
+    # 公開鍵を登録する場合は鍵ファイルパスを設定
+    pubkey: ''
+  tasks:
+    # vars.mode: admin(default) => SSH, SFTP を制限なく使用可能なユーザを作成
+    - include: tasks/admin.yml
+      become: true # root権限で実行
+      when: mode == 'admin'
+    
+    # vars.mode: sftp => chroot SFTP のみ使用可能なユーザを作成
+    - include: tasks/sftp.yml
+      become: true # root権限で実行
+      when: mode == 'sftp'
+    
+    # vars.mode: remove => ユーザを削除
+    - include: tasks/remove.yml
+      become: true # root権限で実行
+      when: mode == 'remove'
+
+

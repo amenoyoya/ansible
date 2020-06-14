@@ -1,0 +1,11 @@
+---
+# SSH接続: 公開鍵認証を無効化
+
+- name: PubkeyAuthentication無効化
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    state: present
+    regexp: ^#?\s*PubkeyAuthentication
+    line: PubkeyAuthentication no
+- name: sshd再起動
+  systemd: name=sshd state=restarted

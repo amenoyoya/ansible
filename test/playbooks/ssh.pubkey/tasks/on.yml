@@ -1,0 +1,17 @@
+---
+# SSH接続: 公開鍵認証を有効化
+
+- name: PubkeyAuthentication有効化
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    state: present
+    regexp: ^#?\s*PubkeyAuthentication
+    line: PubkeyAuthentication yes
+- name: AuthorizedKeysFile設定
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    state: present
+    regexp: ^#?\s*AuthorizedKeysFile
+    line: AuthorizedKeysFile .ssh/authorized_keys
+- name: sshd再起動
+  systemd: name=sshd state=restarted
